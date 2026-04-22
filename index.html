@@ -24,15 +24,23 @@
         .invite-btn { background: #2ecc71; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
 
         #status { font-size: 5vw; margin-bottom: 15px; font-weight: bold; text-transform: uppercase; text-align: center; }
+        
+        /* Doskani aylantirish klassi */
         #board {
             width: 95vw; height: 95vw; max-width: 450px; max-height: 450px;
             border: 6px solid #3e2723; display: grid;
             grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr);
+            transition: transform 0.5s;
         }
+        .rotate-board { transform: rotate(180deg); } /* Qora uchun doskani aylantirish */
+
         .cell { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
         .black-cell { background-color: #5d4037; }
         .white-cell { background-color: #d7ccc8; }
+        
         .piece { width: 82%; height: 82%; border-radius: 50%; display: flex; justify-content: center; align-items: center; transition: transform 0.2s; position: relative; }
+        .rotate-piece { transform: rotate(180deg); } /* Doska aylanganda toshlarni to'g'irlash */
+
         .white-piece { background: radial-gradient(circle, #ffffff, #cccccc); border: 2px solid #999; }
         .black-piece { background: radial-gradient(circle, #424242, #000); border: 2px solid #111; }
         .selected { transform: scale(1.1); box-shadow: 0 0 15px #ffeb3b; border: 3px solid #ffeb3b; }
@@ -111,7 +119,6 @@
                 myRole = 'black';
                 startGame(gameId);
                 db.ref('invites/' + user.id).remove();
-                // Qabul qiluvchi o'yinni yaratadi
                 db.ref('games/' + gameId).set({ start: true });
             }
         }
@@ -140,7 +147,11 @@
         boardDiv.style.display = 'grid';
         statusDiv.style.display = 'block';
         
-        // Oqlar (yaratuvchi) doskani boshlaydi
+        // Qora bo'lsangiz doskani vizual aylantiramiz
+        if (myRole === 'black') {
+            boardDiv.classList.add('rotate-board');
+        }
+
         if (myRole === 'white') {
             init();
             updateFirebase();
@@ -186,6 +197,8 @@
                 if (board[r] && board[r][c]) {
                     const p = document.createElement('div');
                     p.className = `piece ${board[r][c].type}-piece ${board[r][c].king ? 'king' : ''}`;
+                    // Agar doska aylangan bo'lsa, toshlarni teskari qilmaslik
+                    if (myRole === 'black') p.classList.add('rotate-piece');
                     if (selected && selected.r === r && selected.c === c) p.classList.add('selected');
                     cell.appendChild(p);
                 }
@@ -219,16 +232,20 @@
         if (absR !== absC) return;
         const piece = board[fR][fC];
         const rStep = rowDiff / absR; const cStep = colDiff / absC;
+        
         let piecesInWay = [];
         for (let i = 1; i < absR; i++) {
             let currR = fR + i * rStep; let currC = fC + i * cStep;
             if (board[currR][currC]) piecesInWay.push({ r: currR, c: currC, type: board[currR][currC].type });
         }
+        
         if (piecesInWay.length === 0 && !mustJumpAgain) {
             if (!piece.king) {
                 if (absR > 1) return;
-                if (piece.type === 'white' && rowDiff > 0) return;
-                if (piece.type === 'black' && rowDiff < 0) return;
+                // Qora toshlar pastdan yuqoriga (row kamayishi), Oqlar esa yuqoridan pastga (row ko'payishi) harakatlanadi
+                // Lekin sizning massivda Oqlar pastda (r=7) va Qoralar tepada (r=0) joylashgan
+                if (piece.type === 'white' && rowDiff > 0) return; // Oqlar faqat tepaga (row kamayishi)
+                if (piece.type === 'black' && rowDiff < 0) return; // Qoralar faqat pastga (row ko'payishi)
             }
             executeMove(fR, fC, tR, tC);
         } else if (piecesInWay.length === 1 && piecesInWay[0].type !== piece.type) {
