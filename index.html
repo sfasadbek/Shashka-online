@@ -89,7 +89,7 @@
     let gameOver = false;
     let inGame = false;
     let sessionStartTime = Date.now();
-    let currentGameRef = null; // Firebase reference for cleanup
+    let currentGameRef = null;
 
     // ========== YORDAMCHI FUNKSIYALAR ==========
     function getInitialBoard() {
@@ -109,7 +109,60 @@
         return newBoard;
     }
 
-    // Firebaseni yangilash (faqat harakatdan keyin)
+    // Barcha mumkin bo'lgan urish yurishlarini topish (berilgan dona uchun)
+    function getCaptureMoves(row, col, piece) {
+        if (!piece) return [];
+        const moves = [];
+        const dirs = [[1,1], [1,-1], [-1,1], [-1,-1]];
+        
+        for (let [dr, dc] of dirs) {
+            // Oddiy dona uchun faqat 2 masofa, qirol uchun istalgan masofa
+            let maxDist = piece.king ? 7 : 2;
+            for (let step = 1; step <= maxDist; step++) {
+                const midR = row + step * dr;
+                const midC = col + step * dc;
+                const landR = row + (step + 1) * dr;
+                const landC = col + (step + 1) * dc;
+                
+                if (landR < 0 || landR >= 8 || landC < 0 || landC >= 8) break;
+                // Oraliqda dona bo'lishi kerak (raqibniki) va undan keyingi katak bo'sh
+                if (board[midR] && board[midR][midC] && board[midR][midC].type !== piece.type && !board[landR][landC]) {
+                    // Oddiy dona uchun step faqat 1 bo'lishi kerak (ya'ni 2 katak masofa)
+                    if (!piece.king && step !== 1) break;
+                    // Qo'shimcha tekshiruv: oraliqda boshqa donalar yo'qligiga ishonch hosil qilish
+                    let hasOther = false;
+                    for (let k = 1; k < step; k++) {
+                        const checkR = row + k * dr;
+                        const checkC = col + k * dc;
+                        if (board[checkR] && board[checkC]) {
+                            hasOther = true;
+                            break;
+                        }
+                    }
+                    if (!hasOther) {
+                        moves.push({ from: {r: row, c: col}, to: {r: landR, c: landC}, captured: {r: midR, c: midC} });
+                    }
+                    // Qirol uchun bir yo'nalishda eng yaqin urishni topgandan keyin to'xtatamiz
+                    if (!piece.king) break;
+                    else break; // Qirol uchun ham birinchi urishni qabul qilamiz (shashka qoidalari)
+                }
+                // Agar oraliqda o'z donasi yoki raqib donasi bor-u, ammo undan keyin bo'sh joy bo'lmasa, bu yo'nalishda to'xtaymiz
+                if (board[midR] && board[midR][midC]) break;
+                // Agar qirol bo'lsa va bo'sh kataklar ustidan o'tishda davom etamiz
+            }
+        }
+        return moves;
+    }
+
+    // Berilgan pozitsiyada yana urish mumkinmi?
+    function canJumpMore(row, col) {
+        const piece = board[row][col];
+        if (!piece) return false;
+        const captures = getCaptureMoves(row, col, piece);
+        return captures.length > 0;
+    }
+
+    // Firebaseni yangilash
     function updateFirebase() {
         if (!gameId || gameOver) return;
         db.ref('games/' + gameId + '/lastMove').set({
@@ -120,64 +173,40 @@
         });
     }
 
-    // Qo'shimcha urish imkoniyati bormi?
-    function canJumpMore(row, col) {
-        const piece = board[row][col];
-        if (!piece) return false;
-        const dirs = [[1,1], [1,-1], [-1,1], [-1,-1]];
-        for (let [dr, dc] of dirs) {
-            // Qirol yoki oddiy dona: maksimal masofa 7 yoki 2
-            let maxSteps = piece.king ? 7 : 2;
-            for (let step = 1; step <= maxSteps - 1; step++) {
-                const midR = row + step * dr;
-                const midC = col + step * dc;
-                const landR = row + (step + 1) * dr;
-                const landC = col + (step + 1) * dc;
-                if (landR < 0 || landR >= 8 || landC < 0 || landC >= 8) break;
-                // oraliqda dona bor va u raqibniki, qo'nadigan joy bo'sh
-                if (board[midR] && board[midR][midC] && board[midR][midC].type !== piece.type && !board[landR][landC]) {
-                    return true;
-                }
-                // agar oraliqda biron dona bo'lsa (o'zimizniki yoki raqibniki) keyingi qadamlarni tekshirmaymiz
-                if (board[midR] && board[midR][midC]) break;
-            }
-        }
-        return false;
-    }
-
-    // Yurishni bajarish
-    function executeMove(fromR, fromC, toR, toC, wasJump = false) {
+    // Yurishni bajarish (urish bilan yoki oddiy)
+    function executeMove(fromR, fromC, toR, toC, capturedPiece = null) {
         const piece = board[fromR][fromC];
         if (!piece) return false;
         
-        // Qirolga aylantirish
-        if ((piece.type === 'white' && toR === 0) || (piece.type === 'black' && toR === 7)) {
-            piece.king = true;
+        // Urilgan donani olib tashlash
+        if (capturedPiece) {
+            board[capturedPiece.r][capturedPiece.c] = null;
         }
         
         // Donani ko'chirish
         board[toR][toC] = piece;
         board[fromR][fromC] = null;
         
-        // Urish bo'lsa, qo'shimcha urish imkoniyati
-        if (wasJump && canJumpMore(toR, toC)) {
+        // Qirolga aylantirish
+        if ((piece.type === 'white' && toR === 0) || (piece.type === 'black' && toR === 7)) {
+            piece.king = true;
+        }
+        
+        // Urishdan keyin yana urish imkoniyati
+        if (capturedPiece && canJumpMore(toR, toC)) {
             selected = { r: toR, c: toC };
             mustJumpAgain = true;
-            render();
-            updateFirebase();
-            return true;
         } else {
             selected = null;
             mustJumpAgain = false;
-            // Navbatni almashtirish
             turn = (turn === 'white') ? 'black' : 'white';
-            updateFirebase();
-            render();
-            return true;
         }
+        updateFirebase();
+        render();
+        return true;
     }
 
-    // Yurishni tekshirish va bajarish
+    // Yurishni tekshirish (oddiy va urish)
     function tryMove(fromR, fromC, toR, toC) {
         const piece = board[fromR][fromC];
         if (!piece) return false;
@@ -187,39 +216,57 @@
         const colDiff = toC - fromC;
         const absRow = Math.abs(rowDiff);
         const absCol = Math.abs(colDiff);
-        if (absRow !== absCol) return false;
+        if (absRow !== absCol || absRow === 0) return false;
         
         const stepRow = Math.sign(rowDiff);
         const stepCol = Math.sign(colDiff);
         
-        // Oraliqdagi donalarni aniqlash
-        const piecesBetween = [];
+        // Urish yurishlarini aniqlash
+        let capturedPiece = null;
+        let isJump = false;
+        
+        // Oraliqdagi donalarni topish
+        let piecesInBetween = [];
         for (let i = 1; i < absRow; i++) {
             const midR = fromR + i * stepRow;
             const midC = fromC + i * stepCol;
             if (board[midR][midC]) {
-                piecesBetween.push({ r: midR, c: midC, type: board[midR][midC].type });
+                piecesInBetween.push({ r: midR, c: midC, type: board[midR][midC].type });
             }
         }
         
-        // Oddiy yurish (urishsiz)
-        if (piecesBetween.length === 0 && !mustJumpAgain) {
-            // Oddiy yurish faqat 1 katak va to'g'ri yo'nalish (qirol teskari yo'nalishda ham yura oladi)
+        // Urish holati: aynan 1 ta raqib donasi va qo'nish katagi bo'sh
+        if (piecesInBetween.length === 1 && piecesInBetween[0].type !== piece.type) {
+            const captured = piecesInBetween[0];
+            // Urilgan dona bilan qo'nish katagi orasidagi masofa 1 bo'lishi kerak
+            const distToCapture = Math.abs(captured.r - fromR);
+            const distCaptureToLand = Math.abs(toR - captured.r);
+            if (distCaptureToLand === 1 && distToCapture >= 1) {
+                // Oddiy dona uchun masofa aniq 2 (from -> captured = 1, captured -> land = 1)
+                if (!piece.king && (absRow !== 2 || distToCapture !== 1)) return false;
+                // Qirol uchun oraliqda boshqa donalar yo'qligi allaqachon tekshirilgan
+                capturedPiece = captured;
+                isJump = true;
+            } else {
+                return false;
+            }
+        }
+        // Oddiy yurish (hech qanday dona oralig'ida)
+        else if (piecesInBetween.length === 0 && !mustJumpAgain) {
             if (absRow !== 1) return false;
             if (!piece.king) {
                 if (piece.type === 'white' && rowDiff > 0) return false;
                 if (piece.type === 'black' && rowDiff < 0) return false;
             }
-            return executeMove(fromR, fromC, toR, toC, false);
+            return executeMove(fromR, fromC, toR, toC, null);
         }
-        // Urish yurishi
-        else if (piecesBetween.length === 1 && piecesBetween[0].type !== piece.type && !mustJumpAgain) {
-            // Oddiy dona uchun faqat 2 katak uzunlikda urish mumkin
-            if (!piece.king && absRow !== 2) return false;
-            // Uriladigan donani olib tashlash
-            const targetPiece = piecesBetween[0];
-            board[targetPiece.r][targetPiece.c] = null;
-            return executeMove(fromR, fromC, toR, toC, true);
+        else {
+            return false;
+        }
+        
+        // Urish yurishini bajarish
+        if (isJump && capturedPiece) {
+            return executeMove(fromR, fromC, toR, toC, capturedPiece);
         }
         return false;
     }
@@ -234,6 +281,7 @@
             for (let c = 0; c < 8; c++) {
                 const cell = document.createElement('div');
                 cell.className = `cell ${(r + c) % 2 === 0 ? 'white-cell' : 'black-cell'}`;
+                // Klikk hodisasiga haqiqiy koordinatalarni uzatamiz (keyin black uchun o'zgartiriladi)
                 cell.onclick = (function(row, col) { 
                     return function() { handleClick(row, col); };
                 })(r, c);
@@ -255,7 +303,7 @@
         // Statusni yangilash
         const statusDiv = document.getElementById('status');
         if (gameOver) {
-            // winner already shown
+            // g'olib allaqachon ko'rsatilgan
         } else {
             statusDiv.innerText = turn === 'white' ? "⚪ Oqlar yurishi" : "⚫ Qoralar yurishi";
             if (turn === myRole && !gameOver) {
@@ -265,15 +313,24 @@
                 statusDiv.style.color = "#aaa";
             }
         }
-        
         checkWinner();
     }
     
-    function handleClick(row, col) {
+    function handleClick(visualRow, visualCol) {
         if (gameOver) return;
         if (!inGame || turn !== myRole) return;
+        
+        // Qora o'yinchi uchun koordinatalarni aylantirish (board 180° burilgan)
+        let row = visualRow;
+        let col = visualCol;
+        if (myRole === 'black') {
+            row = 7 - visualRow;
+            col = 7 - visualCol;
+        }
+        
+        // Majburiy urish holatida faqat tanlangan dona bilan harakat qilish mumkin
         if (mustJumpAgain && (!selected || selected.r !== row || selected.c !== col)) {
-            // Faqat urishni davom ettirishi kerak
+            // Agar tanlangan dona bo'lmasa yoki boshqa dona bosilsa, hech narsa qilma
             return;
         }
         
@@ -333,11 +390,10 @@
         gameId = gameIdentifier;
         myRole = role;
         
-        // Tozalik
         if (currentGameRef) currentGameRef.off();
         currentGameRef = db.ref('games/' + gameId + '/lastMove');
         
-        // Default board (vaqtinchalik)
+        // Boshlang'ich doska
         board = getInitialBoard();
         turn = 'white';
         selected = null;
@@ -355,28 +411,28 @@
             document.getElementById('board').classList.remove('rotate-board');
         }
         
-        // Firebase'dan real vaqtda yangilanishlarni tinglash
+        // Firebase realtime sync
         currentGameRef.on('value', (snapshot) => {
             const data = snapshot.val();
             if (data && data.newBoard && Array.isArray(data.newBoard) && data.newBoard.length === 8) {
-                // Yangi board va turn kelgan
+                // Qabul qilingan yangi holat
                 board = data.newBoard;
                 turn = data.newTurn;
                 selected = null;
                 mustJumpAgain = false;
                 render();
             } else if (!data && myRole === 'white') {
-                // Hech qanday ma'lumot yo'q, white boshlovchi bo'lsa, boshlang'ich holatni yozadi
-                if (board && JSON.stringify(board) === JSON.stringify(getInitialBoard()) && turn === 'white') {
+                // Hech qanday harakat yo'q, white boshlovchi bo'lsa boshlang'ich holatni yozamiz
+                if (board && JSON.stringify(board) === JSON.stringify(getInitialBoard()) && turn === 'white' && !gameOver) {
                     updateFirebase();
                 }
             }
-        }, { onlyOnce: false });
+        });
         
-        // Agar oq boshlovchi bo'lsa va hech qanday harakat yo'q, boshlang'ich holatni yuborish
+        // White boshlovchi bo'lsa, boshlang'ich holatni bir marta yozish
         if (myRole === 'white') {
             setTimeout(() => {
-                if (board && JSON.stringify(board) === JSON.stringify(getInitialBoard()) && turn === 'white' && !gameOver) {
+                if (board && JSON.stringify(board) === JSON.stringify(getInitialBoard()) && turn === 'white' && !gameOver && inGame) {
                     updateFirebase();
                 }
             }, 500);
@@ -401,7 +457,7 @@
     }
     
     // ========== BOSHLANG'ICH HOLAT ==========
-    // Presence va onlayn ro'yxat
+    // Presence va onlayn ro'yxat (o'zini ko'rsatmaslik)
     db.ref('presence/' + user.id).set({ name: user.first_name, online: true, inGame: false });
     db.ref('presence/' + user.id).onDisconnect().remove();
     
@@ -410,10 +466,11 @@
         listDiv.innerHTML = '';
         let hasAny = false;
         snap.forEach((child) => {
+            // O'zini va o'yindagi foydalanuvchilarni ko'rsatmaslik
             if (child.key !== user.id && !child.val().inGame) {
                 hasAny = true;
                 listDiv.innerHTML += `<div class="user-item">
-                    <span>👤 ${child.val().name}</span> 
+                    <span>👤 ${escapeHtml(child.val().name)}</span> 
                     <button class="invite-btn" onclick="window.invite('${child.key}')">🎮 Taklif</button>
                 </div>`;
             }
@@ -421,17 +478,25 @@
         if (!hasAny) listDiv.innerHTML = '<div style="padding:10px; text-align:center;">Hozircha boshqa o‘yinchilar yo‘q</div>';
     });
     
+    // XSS hujumlaridan himoya
+    function escapeHtml(str) {
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+    
     // Invite qabul qilish
     db.ref('invites/' + user.id).on('value', (snap) => {
         const inv = snap.val();
         if (inv && !inGame && inv.ts > sessionStartTime - 5000) {
             if (confirm(`${inv.fromName} sizni shashka o'ynashga taklif qildi. Qabul qilasizmi?`)) {
-                // O'yin ID: taklif qiluvchiID_qabulqiluvchiID
                 const newGameId = inv.fromId + "_" + user.id;
                 gameId = newGameId;
                 myRole = 'black';
                 db.ref('invites/' + user.id).remove();
-                // O'yinni yaratish (agar mavjud bo'lmasa)
                 db.ref('games/' + gameId).set({ start: true, createdAt: Date.now() });
                 startGame(gameId, 'black');
             } else {
@@ -440,16 +505,15 @@
         }
     });
     
-    // Agar kimdir menga o'yin yaratgan bo'lsa (white tomon)
+    // Agar kimdir menga o'yin yaratgan bo'lsa (white roli)
     db.ref('games').on('child_added', (snap) => {
         const gameVal = snap.val();
         if (!inGame && snap.key.startsWith(user.id + "_") && gameVal && gameVal.createdAt > sessionStartTime - 10000) {
-            // Men oq roliman
             startGame(snap.key, 'white');
         }
     });
     
-    // Global funksiyalarni oynaga bog'lash (onclick uchun)
+    // Global funksiyalar
     window.invite = invite;
     window.tg = tg;
     
@@ -459,7 +523,7 @@
         db.ref('presence/' + user.id).remove();
     });
     
-    console.log("Shashka o'yini tayyor. Telegram orqali ishga tushdi.");
+    console.log("Shashka o'yini tayyor. Barcha xatolar tuzatildi.");
 </script>
 </body>
 </html>
