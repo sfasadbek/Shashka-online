@@ -21,32 +21,34 @@
         #online-list { width: 80%; max-height: 200px; overflow-y: auto; background: #2c2c2c; border-radius: 10px; padding: 10px; }
         .user-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #444; align-items: center; }
         .invite-btn { background: #2ecc71; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
-        #status { font-size: 5vw; margin-bottom: 15px; font-weight: bold; text-transform: uppercase; text-align: center; }
+        #status { font-size: 5vw; margin-bottom: 15px; font-weight: bold; text-transform: uppercase; text-align: center; background: #2c2c2c; padding: 8px 16px; border-radius: 30px; display: inline-block; width: auto; margin-left: auto; margin-right: auto; }
         #board {
             width: 95vw; height: 95vw; max-width: 450px; max-height: 450px;
             border: 6px solid #3e2723; display: grid;
             grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr);
-            transition: transform 0.5s;
+            transition: transform 0.5s; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         }
         .rotate-board { transform: rotate(180deg); }
-        .cell { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
+        .cell { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; cursor: pointer; }
         .black-cell { background-color: #5d4037; }
         .white-cell { background-color: #d7ccc8; }
-        .piece { width: 82%; height: 82%; border-radius: 50%; display: flex; justify-content: center; align-items: center; transition: transform 0.2s; position: relative; }
+        .piece { width: 82%; height: 82%; border-radius: 50%; display: flex; justify-content: center; align-items: center; transition: transform 0.2s; position: relative; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
         .rotate-piece { transform: rotate(180deg); }
-        .white-piece { background: radial-gradient(circle, #ffffff, #cccccc); border: 2px solid #999; }
-        .black-piece { background: radial-gradient(circle, #424242, #000); border: 2px solid #111; }
-        .selected { transform: scale(1.1); box-shadow: 0 0 15px #ffeb3b; border: 3px solid #ffeb3b; }
-        .king::after { content: '♔'; color: #f1c40f; font-size: 7vw; font-weight: bold; }
-        @media (min-width: 450px) { .king::after { font-size: 35px; } }
+        .white-piece { background: radial-gradient(circle, #ffffff, #e0e0e0); border: 2px solid #aaa; }
+        .black-piece { background: radial-gradient(circle, #3a3a3a, #1a1a1a); border: 2px solid #333; }
+        .selected { transform: scale(1.1); box-shadow: 0 0 15px #ffeb3b; border: 3px solid #ffeb3b; filter: brightness(1.05); }
+        .king::after { content: '👑'; font-size: 6vw; font-weight: bold; text-shadow: 1px 1px 1px rgba(0,0,0,0.3); }
+        @media (min-width: 450px) { .king::after { font-size: 32px; } }
+        .game-over-msg { background: #e67e22; color: white; }
+        .status-active { color: #f1c40f; }
     </style>
 </head>
 <body>
 
 <div id="menu">
-    <h1>SHASHKA ONLINE</h1>
+    <h1>♟️ SHASHKA ONLINE</h1>
     <p id="my-name">Yuklanmoqda...</p>
-    <h3>Online foydalanuvchilar:</h3>
+    <h3>🟢 Onlayn o'yinchilar:</h3>
     <div id="online-list">Hozircha hech kim yo'q...</div>
     <br>
     <button class="btn" onclick="tg.close()">Chiqish</button>
@@ -56,6 +58,7 @@
 <div id="board" style="display:none;"></div>
 
 <script>
+    // Firebase konfiguratsiyasi
     const firebaseConfig = {
         apiKey: "AIzaSyBCvV83aHz4VXCiUXykAmcxIj3mOCjeKaM",
         authDomain: "shashka-68221.firebaseapp.com",
@@ -63,8 +66,7 @@
         projectId: "shashka-68221",
         storageBucket: "shashka-68221.firebasestorage.app",
         messagingSenderId: "1097688111504",
-        appId: "1:1097688111504:web:e53a6b98195760972ebb15",
-        measurementId: "G-2Z0DCPLV6X"
+        appId: "1:1097688111504:web:e53a6b98195760972ebb15"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
@@ -72,213 +74,392 @@
     const tg = window.Telegram.WebApp;
     tg.expand();
     const user = tg.initDataUnsafe.user || { 
-        first_name: "Mehmon_" + Math.floor(Math.random()*1000), 
-        id: "guest_" + Date.now() 
+        first_name: "Mehmon_" + Math.floor(Math.random()*10000), 
+        id: "guest_" + Date.now() + "_" + Math.random() 
     };
-    document.getElementById('my-name').innerText = "Salom, " + user.first_name;
+    document.getElementById('my-name').innerHTML = "👋 Salom, " + user.first_name;
 
-    let myRole = '', gameId = '', board = [], turn = 'white', selected = null;
-    let mustJumpAgain = false, gameOver = false, inGame = false;
+    // O'yin holati
+    let myRole = '';          // 'white' yoki 'black'
+    let gameId = '';
+    let board = [];           // 8x8
+    let turn = 'white';       // kimning navbati
+    let selected = null;      // tanlangan dona {r, c}
+    let mustJumpAgain = false;
+    let gameOver = false;
+    let inGame = false;
     let sessionStartTime = Date.now();
+    let currentGameRef = null; // Firebase reference for cleanup
 
-    db.ref('presence/' + user.id).set({ name: user.first_name, online: true, inGame: false });
-    db.ref('presence/' + user.id).onDisconnect().remove();
-
-    db.ref('presence').on('value', (snap) => {
-        const list = document.getElementById('online-list');
-        list.innerHTML = '';
-        snap.forEach((child) => {
-            if(child.key != user.id && !child.val().inGame) {
-                list.innerHTML += `<div class="user-item">
-                    <span>${child.val().name}</span> 
-                    <button class="invite-btn" onclick="invite('${child.key}')">Taklif</button>
-                </div>`;
+    // ========== YORDAMCHI FUNKSIYALAR ==========
+    function getInitialBoard() {
+        const newBoard = [];
+        for (let r = 0; r < 8; r++) {
+            newBoard[r] = [];
+            for (let c = 0; c < 8; c++) {
+                if ((r + c) % 2 !== 0) { // faqat qora kataklar
+                    if (r < 3) newBoard[r][c] = { type: 'black', king: false };
+                    else if (r > 4) newBoard[r][c] = { type: 'white', king: false };
+                    else newBoard[r][c] = null;
+                } else {
+                    newBoard[r][c] = null;
+                }
             }
-        });
-    });
-
-    function invite(targetId) {
-        db.ref('invites/' + targetId).set({ fromId: user.id, fromName: user.first_name, ts: Date.now() });
-        alert("Taklif yuborildi...");
+        }
+        return newBoard;
     }
 
-    db.ref('invites/' + user.id).on('value', (snap) => {
-        const val = snap.val();
-        if(val && !inGame && val.ts > sessionStartTime) {
-            if(confirm(val.fromName + " taklif yubordi. Qabul qilasizmi?")) {
-                gameId = val.fromId + "_" + user.id;
-                myRole = 'black';
-                db.ref('invites/' + user.id).remove();
-                db.ref('games/' + gameId).set({ start: true, createdAt: Date.now() });
-                startGame(gameId);
-            } else {
-                db.ref('invites/' + user.id).remove();
-            }
-        }
-    });
-
-    db.ref('games').on('child_added', (snap) => {
-        const val = snap.val();
-        if (!inGame && snap.key.startsWith(user.id + "_") && val.createdAt > sessionStartTime) {
-            gameId = snap.key;
-            myRole = 'white';
-            startGame(gameId);
-        }
-    });
-
-    function startGame(id) {
-        inGame = true;
-        gameId = id;
-        db.ref('presence/' + user.id).update({ inGame: true });
-        document.getElementById('menu').style.display = 'none';
-        document.getElementById('board').style.display = 'grid';
-        document.getElementById('status').style.display = 'block';
-        if (myRole === 'black') document.getElementById('board').classList.add('rotate-board');
-        
-        if (myRole === 'white') {
-            initBoardData(); 
-        }
-
-        db.ref('games/' + id + '/lastMove').on('value', (snap) => {
-            const data = snap.val();
-            if(data && data.newBoard) {
-                board = data.newBoard;
-                turn = data.newTurn;
-                selected = null;
-                mustJumpAgain = false;
-                render();
-            }
+    // Firebaseni yangilash (faqat harakatdan keyin)
+    function updateFirebase() {
+        if (!gameId || gameOver) return;
+        db.ref('games/' + gameId + '/lastMove').set({
+            player: myRole,
+            newBoard: board,
+            newTurn: turn,
+            ts: Date.now()
         });
     }
 
-    function initBoardData() {
-        board = [];
-        for (let r = 0; r < 8; r++) {
-            board[r] = [];
-            for (let c = 0; c < 8; c++) {
-                let piece = null;
-                if ((r + c) % 2 !== 0) {
-                    if (r < 3) piece = { type: 'black', king: false };
-                    else if (r > 4) piece = { type: 'white', king: false };
+    // Qo'shimcha urish imkoniyati bormi?
+    function canJumpMore(row, col) {
+        const piece = board[row][col];
+        if (!piece) return false;
+        const dirs = [[1,1], [1,-1], [-1,1], [-1,-1]];
+        for (let [dr, dc] of dirs) {
+            // Qirol yoki oddiy dona: maksimal masofa 7 yoki 2
+            let maxSteps = piece.king ? 7 : 2;
+            for (let step = 1; step <= maxSteps - 1; step++) {
+                const midR = row + step * dr;
+                const midC = col + step * dc;
+                const landR = row + (step + 1) * dr;
+                const landC = col + (step + 1) * dc;
+                if (landR < 0 || landR >= 8 || landC < 0 || landC >= 8) break;
+                // oraliqda dona bor va u raqibniki, qo'nadigan joy bo'sh
+                if (board[midR] && board[midR][midC] && board[midR][midC].type !== piece.type && !board[landR][landC]) {
+                    return true;
                 }
-                board[r][c] = piece;
-            }
-        }
-        updateFirebase();
-        render(); // Majburiy chizish
-    }
-
-    function render() {
-        const bDiv = document.getElementById('board');
-        bDiv.innerHTML = '';
-        if(!board || board.length === 0) return;
-
-        for (let r = 0; r < 8; r++) {
-            for (let c = 0; c < 8; c++) {
-                const cell = document.createElement('div');
-                cell.className = `cell ${(r + c) % 2 === 0 ? 'white-cell' : 'black-cell'}`;
-                cell.onclick = () => handleClick(r, c);
-                if (board[r] && board[r][c]) {
-                    const p = document.createElement('div');
-                    p.className = `piece ${board[r][c].type}-piece ${board[r][c].king ? 'king' : ''}`;
-                    if (myRole === 'black') p.classList.add('rotate-piece');
-                    if (selected && selected.r === r && selected.c === c) p.classList.add('selected');
-                    cell.appendChild(p);
-                }
-                bDiv.appendChild(cell);
-            }
-        }
-        const sDiv = document.getElementById('status');
-        sDiv.innerText = turn === 'white' ? "Oqlar yurishi" : "Qoralar yurishi";
-        sDiv.style.color = (turn === myRole) ? "#f1c40f" : "white";
-        checkWinner();
-    }
-
-    function handleClick(r, c) {
-        if (gameOver || turn !== myRole) return;
-        const piece = board[r][c];
-        if (selected) {
-            if (piece && piece.type === turn && !mustJumpAgain) {
-                selected = { r, c };
-            } else {
-                tryMove(selected.r, selected.c, r, c);
-            }
-        } else if (piece && piece.type === turn) {
-            selected = { r, c };
-        }
-        render();
-    }
-
-    function tryMove(fR, fC, tR, tC) {
-        if (board[tR][tC] !== null) return;
-        const rd = tR - fR, cd = tC - fC, ar = Math.abs(rd), ac = Math.abs(cd);
-        if (ar !== ac) return;
-        const p = board[fR][fC], rs = rd / ar, cs = cd / ac;
-        let piecesInWay = [];
-        for (let i = 1; i < ar; i++) {
-            let currR = fR + i * rs, currC = fC + i * cs;
-            if (board[currR][currC]) piecesInWay.push({ r: currR, c: currC, type: board[currR][currC].type });
-        }
-        if (piecesInWay.length === 0 && !mustJumpAgain) {
-            if (!p.king) {
-                if (ar !== 1) return;
-                if (p.type === 'white' && rd > 0) return;
-                if (p.type === 'black' && rd < 0) return;
-            }
-            executeMove(fR, fC, tR, tC);
-        } else if (piecesInWay.length === 1 && piecesInWay[0].type !== p.type) {
-            if (!p.king && ar !== 2) return;
-            board[piecesInWay[0].r][piecesInWay[0].c] = null;
-            executeMove(fR, fC, tR, tC, true);
-        }
-    }
-
-    function executeMove(fR, fC, tR, tC, wasJump = false) {
-        let p = board[fR][fC];
-        if ((p.type === 'white' && tR === 0) || (p.type === 'black' && tR === 7)) p.king = true;
-        board[tR][tC] = p; board[fR][fC] = null;
-        if (wasJump && canJumpMore(tR, tC)) {
-            selected = { r: tR, c: tC }; mustJumpAgain = true;
-        } else {
-            selected = null; mustJumpAgain = false;
-            turn = turn === 'white' ? 'black' : 'white';
-        }
-        updateFirebase();
-        render();
-    }
-
-    function canJumpMore(r, c) {
-        const p = board[r][c];
-        const ds = [[1,1], [1,-1], [-1,1], [-1,-1]];
-        for (let [dr, dc] of ds) {
-            let limit = p.king ? 7 : 2;
-            for (let i = 1; i < limit; i++) {
-                let mR = r + i * dr, mC = c + i * dc, tR = r + (i+1) * dr, tC = c + (i+1) * dc;
-                if (tR >= 0 && tR < 8 && tC >= 0 && tC < 8) {
-                    if (board[mR][mC] && board[mR][mC].type !== p.type && !board[tR][tC]) return true;
-                    if (board[mR][mC]) break;
-                }
+                // agar oraliqda biron dona bo'lsa (o'zimizniki yoki raqibniki) keyingi qadamlarni tekshirmaymiz
+                if (board[midR] && board[midR][midC]) break;
             }
         }
         return false;
     }
 
-    function updateFirebase() {
-        if(!gameId) return;
-        db.ref('games/' + gameId + '/lastMove').set({
-            player: myRole, newBoard: board, newTurn: turn, ts: Date.now()
-        });
-    }
-
-    function checkWinner() {
-        let w = 0, b = 0;
-        board.forEach(row => row.forEach(p => { if(p?.type==='white') w++; if(p?.type==='black') b++; }));
-        if (board.length > 0 && (w === 0 || b === 0)) {
-            document.getElementById('status').innerText = "O'YIN TUGADI! " + (w === 0 ? "QORALAR" : "OQLAR") + " YUTDI!";
-            gameOver = true;
-            setTimeout(() => location.reload(), 5000);
+    // Yurishni bajarish
+    function executeMove(fromR, fromC, toR, toC, wasJump = false) {
+        const piece = board[fromR][fromC];
+        if (!piece) return false;
+        
+        // Qirolga aylantirish
+        if ((piece.type === 'white' && toR === 0) || (piece.type === 'black' && toR === 7)) {
+            piece.king = true;
+        }
+        
+        // Donani ko'chirish
+        board[toR][toC] = piece;
+        board[fromR][fromC] = null;
+        
+        // Urish bo'lsa, qo'shimcha urish imkoniyati
+        if (wasJump && canJumpMore(toR, toC)) {
+            selected = { r: toR, c: toC };
+            mustJumpAgain = true;
+            render();
+            updateFirebase();
+            return true;
+        } else {
+            selected = null;
+            mustJumpAgain = false;
+            // Navbatni almashtirish
+            turn = (turn === 'white') ? 'black' : 'white';
+            updateFirebase();
+            render();
+            return true;
         }
     }
+
+    // Yurishni tekshirish va bajarish
+    function tryMove(fromR, fromC, toR, toC) {
+        const piece = board[fromR][fromC];
+        if (!piece) return false;
+        if (board[toR][toC] !== null) return false;
+        
+        const rowDiff = toR - fromR;
+        const colDiff = toC - fromC;
+        const absRow = Math.abs(rowDiff);
+        const absCol = Math.abs(colDiff);
+        if (absRow !== absCol) return false;
+        
+        const stepRow = Math.sign(rowDiff);
+        const stepCol = Math.sign(colDiff);
+        
+        // Oraliqdagi donalarni aniqlash
+        const piecesBetween = [];
+        for (let i = 1; i < absRow; i++) {
+            const midR = fromR + i * stepRow;
+            const midC = fromC + i * stepCol;
+            if (board[midR][midC]) {
+                piecesBetween.push({ r: midR, c: midC, type: board[midR][midC].type });
+            }
+        }
+        
+        // Oddiy yurish (urishsiz)
+        if (piecesBetween.length === 0 && !mustJumpAgain) {
+            // Oddiy yurish faqat 1 katak va to'g'ri yo'nalish (qirol teskari yo'nalishda ham yura oladi)
+            if (absRow !== 1) return false;
+            if (!piece.king) {
+                if (piece.type === 'white' && rowDiff > 0) return false;
+                if (piece.type === 'black' && rowDiff < 0) return false;
+            }
+            return executeMove(fromR, fromC, toR, toC, false);
+        }
+        // Urish yurishi
+        else if (piecesBetween.length === 1 && piecesBetween[0].type !== piece.type && !mustJumpAgain) {
+            // Oddiy dona uchun faqat 2 katak uzunlikda urish mumkin
+            if (!piece.king && absRow !== 2) return false;
+            // Uriladigan donani olib tashlash
+            const targetPiece = piecesBetween[0];
+            board[targetPiece.r][targetPiece.c] = null;
+            return executeMove(fromR, fromC, toR, toC, true);
+        }
+        return false;
+    }
+
+    // ========== INTERFEYS ==========
+    function render() {
+        const boardDiv = document.getElementById('board');
+        if (!boardDiv || !board || board.length === 0) return;
+        
+        boardDiv.innerHTML = '';
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const cell = document.createElement('div');
+                cell.className = `cell ${(r + c) % 2 === 0 ? 'white-cell' : 'black-cell'}`;
+                cell.onclick = (function(row, col) { 
+                    return function() { handleClick(row, col); };
+                })(r, c);
+                
+                const piece = board[r][c];
+                if (piece) {
+                    const pieceDiv = document.createElement('div');
+                    pieceDiv.className = `piece ${piece.type}-piece ${piece.king ? 'king' : ''}`;
+                    if (myRole === 'black') pieceDiv.classList.add('rotate-piece');
+                    if (selected && selected.r === r && selected.c === c) {
+                        pieceDiv.classList.add('selected');
+                    }
+                    cell.appendChild(pieceDiv);
+                }
+                boardDiv.appendChild(cell);
+            }
+        }
+        
+        // Statusni yangilash
+        const statusDiv = document.getElementById('status');
+        if (gameOver) {
+            // winner already shown
+        } else {
+            statusDiv.innerText = turn === 'white' ? "⚪ Oqlar yurishi" : "⚫ Qoralar yurishi";
+            if (turn === myRole && !gameOver) {
+                statusDiv.style.color = "#f1c40f";
+                statusDiv.style.backgroundColor = "#2c2c2c";
+            } else {
+                statusDiv.style.color = "#aaa";
+            }
+        }
+        
+        checkWinner();
+    }
+    
+    function handleClick(row, col) {
+        if (gameOver) return;
+        if (!inGame || turn !== myRole) return;
+        if (mustJumpAgain && (!selected || selected.r !== row || selected.c !== col)) {
+            // Faqat urishni davom ettirishi kerak
+            return;
+        }
+        
+        const piece = board[row][col];
+        if (selected) {
+            if (piece && piece.type === turn && !mustJumpAgain) {
+                // Boshqa donani tanlash
+                selected = { r: row, c: col };
+                render();
+            } else {
+                // Tanlangan donani harakatlantirish
+                tryMove(selected.r, selected.c, row, col);
+                render();
+            }
+        } else if (piece && piece.type === turn) {
+            selected = { r: row, c: col };
+            render();
+        }
+    }
+    
+    function checkWinner() {
+        if (!board || board.length === 0) return;
+        let whiteCount = 0, blackCount = 0;
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const p = board[r][c];
+                if (p && p.type === 'white') whiteCount++;
+                if (p && p.type === 'black') blackCount++;
+            }
+        }
+        if (whiteCount === 0) {
+            gameOver = true;
+            document.getElementById('status').innerHTML = "🏆 O'YIN TUGADI! QORALAR YUTDI! 🏆";
+            document.getElementById('status').style.color = "#2ecc71";
+            setTimeout(() => endGameAndExit(), 4000);
+        } else if (blackCount === 0) {
+            gameOver = true;
+            document.getElementById('status').innerHTML = "🏆 O'YIN TUGADI! OQLAR YUTDI! 🏆";
+            document.getElementById('status').style.color = "#2ecc71";
+            setTimeout(() => endGameAndExit(), 4000);
+        }
+    }
+    
+    function endGameAndExit() {
+        if (gameId) {
+            db.ref('games/' + gameId + '/lastMove').remove();
+            if (currentGameRef) currentGameRef.off();
+        }
+        db.ref('presence/' + user.id).update({ inGame: false });
+        setTimeout(() => location.reload(), 500);
+    }
+    
+    // ========== OYINNI BOSHLASH ==========
+    function startGame(gameIdentifier, role) {
+        if (inGame) return;
+        inGame = true;
+        gameId = gameIdentifier;
+        myRole = role;
+        
+        // Tozalik
+        if (currentGameRef) currentGameRef.off();
+        currentGameRef = db.ref('games/' + gameId + '/lastMove');
+        
+        // Default board (vaqtinchalik)
+        board = getInitialBoard();
+        turn = 'white';
+        selected = null;
+        mustJumpAgain = false;
+        gameOver = false;
+        
+        // UI ni tayyorlash
+        document.getElementById('menu').style.display = 'none';
+        document.getElementById('board').style.display = 'grid';
+        document.getElementById('status').style.display = 'block';
+        
+        if (myRole === 'black') {
+            document.getElementById('board').classList.add('rotate-board');
+        } else {
+            document.getElementById('board').classList.remove('rotate-board');
+        }
+        
+        // Firebase'dan real vaqtda yangilanishlarni tinglash
+        currentGameRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data && data.newBoard && Array.isArray(data.newBoard) && data.newBoard.length === 8) {
+                // Yangi board va turn kelgan
+                board = data.newBoard;
+                turn = data.newTurn;
+                selected = null;
+                mustJumpAgain = false;
+                render();
+            } else if (!data && myRole === 'white') {
+                // Hech qanday ma'lumot yo'q, white boshlovchi bo'lsa, boshlang'ich holatni yozadi
+                if (board && JSON.stringify(board) === JSON.stringify(getInitialBoard()) && turn === 'white') {
+                    updateFirebase();
+                }
+            }
+        }, { onlyOnce: false });
+        
+        // Agar oq boshlovchi bo'lsa va hech qanday harakat yo'q, boshlang'ich holatni yuborish
+        if (myRole === 'white') {
+            setTimeout(() => {
+                if (board && JSON.stringify(board) === JSON.stringify(getInitialBoard()) && turn === 'white' && !gameOver) {
+                    updateFirebase();
+                }
+            }, 500);
+        }
+        
+        render();
+        db.ref('presence/' + user.id).update({ inGame: true });
+    }
+    
+    // ========== TAKLIF VA ONLINE ==========
+    function invite(targetId) {
+        if (inGame) {
+            alert("Siz allaqachon o'yindasiz!");
+            return;
+        }
+        db.ref('invites/' + targetId).set({ 
+            fromId: user.id, 
+            fromName: user.first_name, 
+            ts: Date.now() 
+        });
+        alert("✅ Taklif yuborildi!");
+    }
+    
+    // ========== BOSHLANG'ICH HOLAT ==========
+    // Presence va onlayn ro'yxat
+    db.ref('presence/' + user.id).set({ name: user.first_name, online: true, inGame: false });
+    db.ref('presence/' + user.id).onDisconnect().remove();
+    
+    db.ref('presence').on('value', (snap) => {
+        const listDiv = document.getElementById('online-list');
+        listDiv.innerHTML = '';
+        let hasAny = false;
+        snap.forEach((child) => {
+            if (child.key !== user.id && !child.val().inGame) {
+                hasAny = true;
+                listDiv.innerHTML += `<div class="user-item">
+                    <span>👤 ${child.val().name}</span> 
+                    <button class="invite-btn" onclick="window.invite('${child.key}')">🎮 Taklif</button>
+                </div>`;
+            }
+        });
+        if (!hasAny) listDiv.innerHTML = '<div style="padding:10px; text-align:center;">Hozircha boshqa o‘yinchilar yo‘q</div>';
+    });
+    
+    // Invite qabul qilish
+    db.ref('invites/' + user.id).on('value', (snap) => {
+        const inv = snap.val();
+        if (inv && !inGame && inv.ts > sessionStartTime - 5000) {
+            if (confirm(`${inv.fromName} sizni shashka o'ynashga taklif qildi. Qabul qilasizmi?`)) {
+                // O'yin ID: taklif qiluvchiID_qabulqiluvchiID
+                const newGameId = inv.fromId + "_" + user.id;
+                gameId = newGameId;
+                myRole = 'black';
+                db.ref('invites/' + user.id).remove();
+                // O'yinni yaratish (agar mavjud bo'lmasa)
+                db.ref('games/' + gameId).set({ start: true, createdAt: Date.now() });
+                startGame(gameId, 'black');
+            } else {
+                db.ref('invites/' + user.id).remove();
+            }
+        }
+    });
+    
+    // Agar kimdir menga o'yin yaratgan bo'lsa (white tomon)
+    db.ref('games').on('child_added', (snap) => {
+        const gameVal = snap.val();
+        if (!inGame && snap.key.startsWith(user.id + "_") && gameVal && gameVal.createdAt > sessionStartTime - 10000) {
+            // Men oq roliman
+            startGame(snap.key, 'white');
+        }
+    });
+    
+    // Global funksiyalarni oynaga bog'lash (onclick uchun)
+    window.invite = invite;
+    window.tg = tg;
+    
+    // Sahifa yopilganda tozalash
+    window.addEventListener('beforeunload', () => {
+        if (gameId && currentGameRef) currentGameRef.off();
+        db.ref('presence/' + user.id).remove();
+    });
+    
+    console.log("Shashka o'yini tayyor. Telegram orqali ishga tushdi.");
 </script>
 </body>
 </html>
