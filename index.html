@@ -91,6 +91,7 @@
     let mustJumpAgain = false;
     let gameOver = false;
     let inGame = false;
+    let sessionStartTime = Date.now(); // Faqat yangi o'yinlarni olish uchun
 
     db.ref('presence/' + user.id).set({ name: user.first_name, online: true, inGame: false });
     db.ref('presence/' + user.id).onDisconnect().remove();
@@ -100,7 +101,6 @@
     }
     clearOldData();
 
-    // Online foydalanuvchilar ro'yxati
     db.ref('presence').on('value', (snap) => {
         const list = document.getElementById('online-list');
         list.innerHTML = '';
@@ -116,18 +116,19 @@
 
     function invite(targetId) {
         if(inGame) return;
-        db.ref('invites/' + targetId).set({ fromId: user.id, fromName: user.first_name });
+        db.ref('invites/' + targetId).set({ fromId: user.id, fromName: user.first_name, ts: Date.now() });
         alert("Taklif yuborildi...");
     }
 
-    // Takliflarni eshitish (faqat o'yinda bo'lmaganda)
     db.ref('invites/' + user.id).on('value', (snap) => {
-        if(snap.val() && !inGame) {
-            if(confirm(snap.val().fromName + " taklif yubordi. Qabul qilasizmi?")) {
-                gameId = snap.val().fromId + "_" + user.id;
+        const val = snap.val();
+        // Faqat o'yin boshlangandan keyin kelgan taklifni qabul qiladi
+        if(val && !inGame && val.ts > sessionStartTime) {
+            if(confirm(val.fromName + " taklif yubordi. Qabul qilasizmi?")) {
+                gameId = val.fromId + "_" + user.id;
                 myRole = 'black';
                 db.ref('invites/' + user.id).remove();
-                db.ref('games/' + gameId).set({ start: true });
+                db.ref('games/' + gameId).set({ start: true, createdAt: Date.now() });
                 startGame(gameId);
             } else {
                 db.ref('invites/' + user.id).remove();
@@ -136,7 +137,9 @@
     });
 
     db.ref('games').on('child_added', (snap) => {
-        if (!inGame && snap.key.startsWith(user.id + "_")) {
+        const val = snap.val();
+        // Faqat yangi yaratilgan o'yin bo'lsa kiradi
+        if (!inGame && snap.key.startsWith(user.id + "_") && val.createdAt > sessionStartTime) {
             gameId = snap.key;
             myRole = 'white';
             startGame(gameId);
@@ -303,9 +306,7 @@
             const winner = w === 0 ? "QORALAR" : "OQLAR";
             document.getElementById('status').innerHTML = "O'YIN TUGADI! " + winner + " YUTDI!";
             gameOver = true;
-            
             setTimeout(() => {
-                // O'yin ma'lumotlarini tozalash va menyuga qaytish
                 if (myRole === 'white') db.ref('games/' + gameId).remove();
                 location.reload(); 
             }, 5000);
