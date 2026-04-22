@@ -87,9 +87,11 @@
     let inGame = false;
     let sessionStartTime = Date.now();
 
+    // Presence
     db.ref('presence/' + user.id).set({ name: user.first_name, online: true, inGame: false });
     db.ref('presence/' + user.id).onDisconnect().remove();
 
+    // List online users
     db.ref('presence').on('value', (snap) => {
         const list = document.getElementById('online-list');
         list.innerHTML = '';
@@ -108,6 +110,7 @@
         alert("Taklif yuborildi...");
     }
 
+    // Listen for invites
     db.ref('invites/' + user.id).on('value', (snap) => {
         const val = snap.val();
         if(val && !inGame && val.ts > sessionStartTime) {
@@ -123,6 +126,7 @@
         }
     });
 
+    // Listen for accepted games
     db.ref('games').on('child_added', (snap) => {
         const val = snap.val();
         if (!inGame && snap.key.startsWith(user.id + "_") && val.createdAt > sessionStartTime) {
@@ -139,12 +143,16 @@
         document.getElementById('menu').style.display = 'none';
         document.getElementById('board').style.display = 'grid';
         document.getElementById('status').style.display = 'block';
+        
         if (myRole === 'black') document.getElementById('board').classList.add('rotate-board');
-        if (myRole === 'white') initBoard();
+        
+        if (myRole === 'white') {
+            initBoardData();
+        }
 
         db.ref('games/' + id + '/lastMove').on('value', (snap) => {
             const data = snap.val();
-            if(data) {
+            if(data && data.newBoard) {
                 board = data.newBoard;
                 turn = data.newTurn;
                 selected = null;
@@ -154,7 +162,7 @@
         });
     }
 
-    function initBoard() {
+    function initBoardData() {
         board = [];
         for (let r = 0; r < 8; r++) {
             board[r] = [];
@@ -168,17 +176,19 @@
             }
         }
         updateFirebase();
-        render();
     }
 
     function render() {
         const bDiv = document.getElementById('board');
         bDiv.innerHTML = '';
+        if(!board || board.length === 0) return;
+
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 8; c++) {
                 const cell = document.createElement('div');
                 cell.className = `cell ${(r + c) % 2 === 0 ? 'white-cell' : 'black-cell'}`;
                 cell.onclick = () => handleClick(r, c);
+                
                 if (board[r] && board[r][c]) {
                     const p = document.createElement('div');
                     p.className = `piece ${board[r][c].type}-piece ${board[r][c].king ? 'king' : ''}`;
@@ -225,17 +235,18 @@
             if (board[currR][currC]) piecesInWay.push({ r: currR, c: currC, type: board[currR][currC].type });
         }
 
-        // Oddiy yurish
+        // Oddiy yurish (faqat 1 katak)
         if (piecesInWay.length === 0 && !mustJumpAgain) {
             if (!p.king) {
                 if (ar !== 1) return;
-                if (p.type === 'white' && rd > 0) return;
-                if (p.type === 'black' && rd < 0) return;
+                if (p.type === 'white' && rd > 0) return; // Oqlar faqat tepaga
+                if (p.type === 'black' && rd < 0) return; // Qoralar faqat pastga
             }
             executeMove(fR, fC, tR, tC);
         } 
-        // Yeyish
+        // Yeyish (to'siq 1 ta bo'lsa va dushman bo'lsa)
         else if (piecesInWay.length === 1 && piecesInWay[0].type !== p.type) {
+            // Damka bo'lmasa masofa cheklangan (ar=2), damka bo'lsa xohlagancha
             if (!p.king && ar !== 2) return;
             board[piecesInWay[0].r][piecesInWay[0].c] = null;
             executeMove(fR, fC, tR, tC, true);
@@ -244,7 +255,9 @@
 
     function executeMove(fR, fC, tR, tC, wasJump = false) {
         let p = board[fR][fC];
+        // Damkaga aylanish
         if ((p.type === 'white' && tR === 0) || (p.type === 'black' && tR === 7)) p.king = true;
+        
         board[tR][tC] = p;
         board[fR][fC] = null;
 
@@ -254,22 +267,23 @@
         } else {
             selected = null;
             mustJumpAgain = false;
-            turn = turn === 'white' ? 'black' : 'white';
+            turn = (turn === 'white') ? 'black' : 'white';
         }
         updateFirebase();
-        render();
     }
 
     function canJumpMore(r, c) {
         const p = board[r][c];
+        if(!p) return false;
         const ds = [[1,1], [1,-1], [-1,1], [-1,-1]];
         for (let [dr, dc] of ds) {
             let limit = p.king ? 7 : 2;
             for (let i = 1; i < limit; i++) {
-                let mR = r + i * dr, mC = c + i * dc, tR = r + (i+1) * dr, tC = c + (i+1) * dc;
+                let mR = r + i * dr, mC = c + i * dc; // dushman
+                let tR = r + (i+1) * dr, tC = c + (i+1) * dc; // tushadigan joy
                 if (tR >= 0 && tR < 8 && tC >= 0 && tC < 8) {
                     if (board[mR][mC] && board[mR][mC].type !== p.type && !board[tR][tC]) return true;
-                    if (board[mR][mC]) break;
+                    if (board[mR][mC]) break; // to'siq bo'lsa bu yo'nalish yopiq
                 }
             }
         }
@@ -277,6 +291,7 @@
     }
 
     function updateFirebase() {
+        if(!gameId) return;
         db.ref('games/' + gameId + '/lastMove').set({
             player: myRole,
             newBoard: board,
@@ -289,7 +304,8 @@
         let w = 0, b = 0;
         board.forEach(row => row.forEach(p => { if(p?.type==='white') w++; if(p?.type==='black') b++; }));
         if (board.length > 0 && (w === 0 || b === 0)) {
-            document.getElementById('status').innerText = "O'YIN TUGADI! " + (w === 0 ? "QORALAR" : "OQLAR") + " YUTDI!";
+            const winnerText = (w === 0 ? "QORALAR" : "OQLAR");
+            document.getElementById('status').innerText = "O'YIN TUGADI! " + winnerText + " YUTDI!";
             gameOver = true;
             setTimeout(() => location.reload(), 5000);
         }
