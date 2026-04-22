@@ -87,8 +87,22 @@
     let gameId = '';
     let isMyTurn = false;
 
+    // Presence va tozalash
     db.ref('presence/' + user.id).set({ name: user.first_name, online: true });
     db.ref('presence/' + user.id).onDisconnect().remove();
+
+    // Foydalanuvchi tizimga kirganda u bilan bog'liq eski qoldiqlarni tozalash
+    function clearOldData() {
+        db.ref('invites/' + user.id).remove();
+        db.ref('games').once('value', (snap) => {
+            snap.forEach((child) => {
+                if (child.key.includes(user.id)) {
+                    db.ref('games/' + child.key).remove();
+                }
+            });
+        });
+    }
+    clearOldData();
 
     db.ref('presence').on('value', (snap) => {
         const list = document.getElementById('online-list');
@@ -107,7 +121,6 @@
     });
 
     function invite(targetId) {
-        // Eski o'yinlarni tozalash
         db.ref('invites/' + targetId).remove();
         db.ref('invites/' + targetId).set({ fromId: user.id, fromName: user.first_name });
         alert("Taklif yuborildi, kutilmoqda...");
@@ -121,10 +134,8 @@
                 myRole = 'black';
                 db.ref('invites/' + user.id).remove();
                 
-                // Yangi o'yinni boshlashdan oldin bazani tozalab yangilaymiz
                 db.ref('games/' + gameId).remove().then(() => {
                     db.ref('games/' + gameId).set({ start: true });
-                    // Agar o'yindan chiqib ketsa, o'yinni o'chirib tashlaymiz
                     db.ref('games/' + gameId).onDisconnect().remove();
                     startGame(gameId);
                 });
@@ -318,9 +329,9 @@
             if(board.length > 0) {
                statusDiv.innerHTML = "O'YIN TUGADI! " + (whiteLeft === 0 ? "QORALAR" : "OQLAR") + " YUTDI!";
                gameOver = true;
-               // O'yin tugagandan 5 soniya o'tgach bazani tozalaymiz
                setTimeout(() => {
                    if(gameId) db.ref('games/' + gameId).remove();
+                   window.location.reload(); // Menuga qaytish
                }, 5000);
             }
         }
