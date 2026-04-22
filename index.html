@@ -9,36 +9,23 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
     <style>
+        /* CSS qismi o'zgarishsiz qoldi */
         * { box-sizing: border-box; touch-action: manipulation; }
-        body { 
-            display: flex; flex-direction: column; justify-content: center; 
-            align-items: center; height: 100vh; background: #1a1a1a; 
-            margin: 0; font-family: sans-serif; overflow: hidden; color: white;
-        }
+        body { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; background: #1a1a1a; margin: 0; font-family: sans-serif; overflow: hidden; color: white; }
         #menu { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         #menu h1 { color: #f1c40f; margin-bottom: 30px; }
-        
         #leaderboard-btn { position: absolute; top: 20px; right: 20px; font-size: 30px; cursor: pointer; background: #2c2c2c; padding: 10px; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid #f1c40f; }
-        
         #leaderboard-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 200; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         .leaderboard-content { width: 90%; max-width: 400px; background: #2c2c2c; border-radius: 15px; padding: 20px; max-height: 80vh; overflow-y: auto; }
         .leaderboard-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #444; font-size: 14px; }
         .win-text { color: #2ecc71; font-weight: bold; }
         .loss-text { color: #e74c3c; font-weight: bold; }
-
         .btn { background: #f1c40f; color: black; border: none; padding: 15px 30px; border-radius: 10px; font-weight: bold; font-size: 18px; margin: 10px; cursor: pointer; width: 80%; }
         #online-list { width: 80%; max-height: 200px; overflow-y: auto; background: #2c2c2c; border-radius: 10px; padding: 10px; }
         .user-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #444; align-items: center; }
         .invite-btn { background: #2ecc71; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
-        
         #status { font-size: 5vw; margin-bottom: 15px; font-weight: bold; text-transform: uppercase; text-align: center; background: #2c2c2c; padding: 8px 20px; border-radius: 30px; display: inline-block; width: auto; min-width: 200px; }
-        #board {
-            width: 95vw; height: 95vw; max-width: 450px; max-height: 450px;
-            border: 6px solid #3e2723; display: grid;
-            grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr);
-            transition: transform 0.5s; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            background-color: #d7ccc8;
-        }
+        #board { width: 95vw; height: 95vw; max-width: 450px; max-height: 450px; border: 6px solid #3e2723; display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); transition: transform 0.5s; box-shadow: 0 10px 25px rgba(0,0,0,0.5); background-color: #d7ccc8; }
         .rotate-board { transform: rotate(180deg); }
         .cell { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; cursor: pointer; }
         .black-cell { background-color: #5d4037; }
@@ -49,7 +36,6 @@
         .black-piece { background: radial-gradient(circle, #3a3a3a, #1a1a1a); border: 2px solid #333; }
         .selected { transform: scale(1.1); box-shadow: 0 0 15px #ffeb3b; border: 3px solid #ffeb3b; filter: brightness(1.1); }
         .king::after { content: '👑'; font-size: 6vw; font-weight: bold; text-shadow: 1px 1px 1px rgba(0,0,0,0.3); }
-        
         #resign-btn { margin-top: 30px; background: #e74c3c; color: white; display: none; padding: 12px 25px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(231, 76, 60, 0.3); }
     </style>
 </head>
@@ -76,6 +62,7 @@
 <button id="resign-btn" onclick="resignGame()">🏳️ Taslim bo'lish</button>
 
 <script>
+    // Firebase va boshlang'ich sozlamalar o'zgarishsiz qoladi
     const firebaseConfig = {
         apiKey: "AIzaSyBCvV83aHz4VXCiUXykAmcxIj3mOCjeKaM",
         authDomain: "shashka-68221.firebaseapp.com",
@@ -87,26 +74,12 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-
     const tg = window.Telegram.WebApp;
     tg.expand();
-    const user = tg.initDataUnsafe.user || { 
-        first_name: "Mehmon_" + Math.floor(Math.random()*10000), 
-        id: "guest_" + Date.now()
-    };
-    
+    const user = tg.initDataUnsafe.user || { first_name: "Mehmon_" + Math.floor(Math.random()*10000), id: "guest_" + Date.now() };
     document.getElementById('my-name').innerHTML = "👋 Salom, " + user.first_name;
 
-    let myRole = '';
-    let gameId = '';
-    let board = [];
-    let turn = 'white';
-    let selected = null;
-    let mustJumpAgain = false;
-    let gameOver = false;
-    let inGame = false;
-    let opponentId = '';
-    let sessionStartTime = Date.now();
+    let myRole = '', gameId = '', board = [], turn = 'white', selected = null, mustJumpAgain = false, gameOver = false, inGame = false, opponentId = '', sessionStartTime = Date.now();
 
     function getInitialBoard() {
         const newBoard = [];
@@ -117,14 +90,13 @@
                     if (r < 3) newBoard[r][c] = { type: 'black', king: false };
                     else if (r > 4) newBoard[r][c] = { type: 'white', king: false };
                     else newBoard[r][c] = "empty";
-                } else {
-                    newBoard[r][c] = "empty";
-                }
+                } else newBoard[r][c] = "empty";
             }
         }
         return newBoard;
     }
 
+    // Statistika, Leaderboard va Firebase yangilash funksiyalari o'zgarishsiz qoladi
     function updateStats(won) {
         db.ref('stats/' + user.id).transaction((current) => {
             if (current === null) return { name: user.first_name, wins: won ? 1 : 0, losses: won ? 0 : 1 };
@@ -173,55 +145,110 @@
         gameOver = true;
         alert(message);
         updateStats(won);
-        
         if (gameId) db.ref('games/' + gameId).remove();
         db.ref('presence/' + user.id).update({ inGame: false });
         setTimeout(() => location.reload(), 500);
     }
 
     function startGame(id, role, oppId, existingBoard = null) {
-        inGame = true;
-        gameId = id;
-        myRole = role;
-        opponentId = oppId;
+        inGame = true; gameId = id; myRole = role; opponentId = oppId;
         board = existingBoard ? JSON.parse(existingBoard) : getInitialBoard();
-        
         document.getElementById('menu').style.display = 'none';
         document.getElementById('board').style.display = 'grid';
         document.getElementById('status').style.display = 'block';
         document.getElementById('resign-btn').style.display = 'block';
-        
         const boardEl = document.getElementById('board');
         if (myRole === 'black') boardEl.classList.add('rotate-board');
         else boardEl.classList.remove('rotate-board');
-
         db.ref('games/' + gameId + '/lastMove').on('value', (snap) => {
             const data = snap.val();
-            if (data && data.player !== myRole) {
-                board = JSON.parse(data.newBoard);
-                turn = data.newTurn;
-                render();
-            }
+            if (data && data.player !== myRole) { board = JSON.parse(data.newBoard); turn = data.newTurn; render(); }
         });
-
         db.ref('games/' + gameId + '/event').on('value', (snap) => {
             const ev = snap.val();
-            if (ev && ev.by !== user.id) {
-                if (ev.type === 'resign') {
-                    finishGame(true, "Raqib taslim bo'ldi! Siz g'olibsiz.");
-                }
-            }
+            if (ev && ev.by !== user.id && ev.type === 'resign') finishGame(true, "Raqib taslim bo'ldi! Siz g'olibsiz.");
         });
-
-        // Uzilishni nazorat qilish (Raqib onlaynligini tekshirish)
         db.ref('presence/' + opponentId + '/online').on('value', (snap) => {
-            if (inGame && !gameOver && snap.val() === false) {
-                finishGame(true, "Raqib aloqadan chiqdi! Siz g'olibsiz.");
-            }
+            if (inGame && !gameOver && snap.val() === false) finishGame(true, "Raqib aloqadan chiqdi! Siz g'olibsiz.");
         });
-
         render();
         db.ref('presence/' + user.id).update({ inGame: true });
+    }
+
+    // --- QIROL UCHUN YANGILANGAN MANTIQ ---
+
+    function getCaptureMoves(row, col, piece) {
+        if (!piece || piece === "empty") return [];
+        const moves = [];
+        const dirs = [[1,1], [1,-1], [-1,1], [-1,-1]];
+
+        for (let [dr, dc] of dirs) {
+            if (piece.king) {
+                // Qirol uchun uzoq masofali urish
+                let r = row + dr;
+                let c = col + dc;
+                let foundEnemy = null;
+                while (r >= 0 && r < 8 && c >= 0 && c < 8) {
+                    const current = board[r][c];
+                    if (current !== "empty") {
+                        if (current.type === piece.type) break; // O'zinikini ura olmaydi
+                        if (foundEnemy) break; // Ketma-ket ikkita figurani ura olmaydi
+                        foundEnemy = {r, c};
+                    } else if (foundEnemy) {
+                        // Raqibdan keyingi bo'sh kataklar - urish mumkin bo'lgan joylar
+                        moves.push({ from: {r: row, c: col}, to: {r, c}, captured: {r: foundEnemy.r, c: foundEnemy.c} });
+                    }
+                    r += dr; c += dc;
+                }
+            } else {
+                // Oddiy figura uchun urish
+                const midR = row + dr, midC = col + dc;
+                const landR = row + 2 * dr, landC = col + 2 * dc;
+                if (landR >= 0 && landR < 8 && landC >= 0 && landC < 8) {
+                    const midPiece = board[midR][midC];
+                    if (midPiece !== "empty" && midPiece.type !== piece.type && board[landR][landC] === "empty") {
+                        moves.push({ from: {r: row, c: col}, to: {r: landR, c: landC}, captured: {r: midR, c: midC} });
+                    }
+                }
+            }
+        }
+        return moves;
+    }
+
+    function tryMove(fromR, fromC, toR, toC) {
+        const piece = board[fromR][fromC];
+        const rowDiff = toR - fromR;
+        const colDiff = toC - fromC;
+        const absRow = Math.abs(rowDiff);
+        const absCol = Math.abs(colDiff);
+
+        if (absRow !== absCol || board[toR][toC] !== "empty") return false;
+
+        // Yo'lda biron nima borligini tekshirish
+        const dr = rowDiff / absRow;
+        const dc = colDiff / absCol;
+        let piecesInWay = [];
+        for (let i = 1; i < absRow; i++) {
+            let r = fromR + i * dr;
+            let c = fromC + i * dc;
+            if (board[r][c] !== "empty") piecesInWay.push({r, c, type: board[r][c].type});
+        }
+
+        if (piecesInWay.length === 0 && !mustJumpAgain) {
+            // Oddiy yurish (urmasdan)
+            if (piece.king) return executeMove(fromR, fromC, toR, toC);
+            if (absRow === 1) {
+                if (piece.type === 'white' && rowDiff < 0) return executeMove(fromR, fromC, toR, toC);
+                if (piece.type === 'black' && rowDiff > 0) return executeMove(fromR, fromC, toR, toC);
+            }
+        } else if (piecesInWay.length === 1) {
+            // Urish holati
+            const enemy = piecesInWay[0];
+            if (enemy.type !== piece.type) {
+                if (piece.king || absRow === 2) return executeMove(fromR, fromC, toR, toC, {r: enemy.r, c: enemy.c});
+            }
+        }
+        return false;
     }
 
     function executeMove(fromR, fromC, toR, toC, capturedPiece = null) {
@@ -229,9 +256,9 @@
         if (capturedPiece) board[capturedPiece.r][capturedPiece.c] = "empty";
         board[toR][toC] = piece;
         board[fromR][fromC] = "empty";
-        
         if ((piece.type === 'white' && toR === 0) || (piece.type === 'black' && toR === 7)) piece.king = true;
         
+        // Yana urish imkoniyati borligini tekshirish
         if (capturedPiece && getCaptureMoves(toR, toC, board[toR][toC]).length > 0) {
             selected = { r: toR, c: toC };
             mustJumpAgain = true;
@@ -245,46 +272,7 @@
         return true;
     }
 
-    function getCaptureMoves(row, col, piece) {
-        if (!piece || piece === "empty") return [];
-        const moves = [];
-        const dirs = [[1,1], [1,-1], [-1,1], [-1,-1]];
-        for (let [dr, dc] of dirs) {
-            const midR = row + dr, midC = col + dc;
-            const landR = row + 2 * dr, landC = col + 2 * dc;
-            if (landR >= 0 && landR < 8 && landC >= 0 && landC < 8) {
-                const midPiece = board[midR][midC];
-                if (midPiece !== "empty" && midPiece.type !== piece.type && board[landR][landC] === "empty") {
-                    moves.push({ from: {r: row, c: col}, to: {r: landR, c: landC}, captured: {r: midR, c: midC} });
-                }
-            }
-        }
-        return moves;
-    }
-
-    function tryMove(fromR, fromC, toR, toC) {
-        const piece = board[fromR][fromC];
-        const rowDiff = toR - fromR;
-        const absRow = Math.abs(rowDiff);
-        const absCol = Math.abs(toC - fromC);
-        if (absRow !== absCol || board[toR][toC] !== "empty") return false;
-        
-        if (absRow === 1 && !mustJumpAgain) {
-            if (!piece.king) {
-                if (piece.type === 'white' && rowDiff > 0) return false;
-                if (piece.type === 'black' && rowDiff < 0) return false;
-            }
-            return executeMove(fromR, fromC, toR, toC);
-        }
-        if (absRow === 2) {
-            const midR = fromR + rowDiff / 2;
-            const midC = fromC + (toC - fromC) / 2;
-            const midPiece = board[midR][midC];
-            if (midPiece !== "empty" && midPiece.type !== piece.type) return executeMove(fromR, fromC, toR, toC, {r: midR, c: midC});
-        }
-        return false;
-    }
-
+    // Render va boshqa qismlar o'zgarishsiz qoladi
     function render() {
         const boardDiv = document.getElementById('board');
         boardDiv.innerHTML = '';
@@ -313,7 +301,6 @@
             }
         }
         document.getElementById('status').innerText = turn === 'white' ? "⚪ Oqlar yurishi" : "⚫ Qoralar yurishi";
-        
         let w = 0, b = 0;
         board.forEach(row => row.forEach(p => { if (p.type === 'white') w++; if (p.type === 'black') b++; }));
         if ((w === 0 || b === 0) && !gameOver && inGame) {
@@ -351,7 +338,6 @@
             }
         });
     });
-
 </script>
 </body>
 </html>
