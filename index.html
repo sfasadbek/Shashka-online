@@ -9,7 +9,6 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
     <style>
-        /* CSS qismi o'zgarishsiz qoldi */
         * { box-sizing: border-box; touch-action: manipulation; }
         body { 
             display: flex; flex-direction: column; justify-content: center; 
@@ -18,10 +17,22 @@
         }
         #menu { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         #menu h1 { color: #f1c40f; margin-bottom: 30px; }
+        
+        /* Kubok tugmasi */
+        #leaderboard-btn { position: absolute; top: 20px; right: 20px; font-size: 30px; cursor: pointer; background: #2c2c2c; padding: 10px; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid #f1c40f; }
+        
+        /* Reyting oynasi */
+        #leaderboard-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 200; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+        .leaderboard-content { width: 90%; max-width: 400px; background: #2c2c2c; border-radius: 15px; padding: 20px; max-height: 80vh; overflow-y: auto; }
+        .leaderboard-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #444; font-size: 14px; }
+        .win-text { color: #2ecc71; font-weight: bold; }
+        .loss-text { color: #e74c3c; font-weight: bold; }
+
         .btn { background: #f1c40f; color: black; border: none; padding: 15px 30px; border-radius: 10px; font-weight: bold; font-size: 18px; margin: 10px; cursor: pointer; width: 80%; }
         #online-list { width: 80%; max-height: 200px; overflow-y: auto; background: #2c2c2c; border-radius: 10px; padding: 10px; }
         .user-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #444; align-items: center; }
         .invite-btn { background: #2ecc71; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
+        
         #status { font-size: 5vw; margin-bottom: 15px; font-weight: bold; text-transform: uppercase; text-align: center; background: #2c2c2c; padding: 8px 16px; border-radius: 30px; display: inline-block; width: auto; margin-left: auto; margin-right: auto; }
         #board {
             width: 95vw; height: 95vw; max-width: 450px; max-height: 450px;
@@ -45,6 +56,7 @@
 <body>
 
 <div id="menu">
+    <div id="leaderboard-btn" onclick="toggleLeaderboard(true)">🏆</div>
     <h1>♟️ SHASHKA ONLINE</h1>
     <p id="my-name">Yuklanmoqda...</p>
     <h3>🟢 Onlayn o'yinchilar:</h3>
@@ -53,11 +65,16 @@
     <button class="btn" onclick="tg.close()">Chiqish</button>
 </div>
 
+<div id="leaderboard-modal">
+    <h2>🏆 Eng yaxshilar</h2>
+    <div class="leaderboard-content" id="leaderboard-list">Yuklanmoqda...</div>
+    <button class="btn" style="width: 200px;" onclick="toggleLeaderboard(false)">Yopish</button>
+</div>
+
 <div id="status" style="display:none;">Oqlar yurishi</div>
 <div id="board" style="display:none;"></div>
 
 <script>
-    // Firebase Config (O'zingizniki qoldi)
     const firebaseConfig = {
         apiKey: "AIzaSyBCvV83aHz4VXCiUXykAmcxIj3mOCjeKaM",
         authDomain: "shashka-68221.firebaseapp.com",
@@ -97,7 +114,7 @@
                 if ((r + c) % 2 !== 0) {
                     if (r < 3) newBoard[r][c] = { type: 'black', king: false };
                     else if (r > 4) newBoard[r][c] = { type: 'white', king: false };
-                    else newBoard[r][c] = "empty"; // null o'rniga "empty" (Firebase uchun xavfsizroq)
+                    else newBoard[r][c] = "empty";
                 } else {
                     newBoard[r][c] = "empty";
                 }
@@ -106,11 +123,48 @@
         return newBoard;
     }
 
+    function updateStats(won) {
+        const statsRef = db.ref('stats/' + user.id);
+        statsRef.transaction((current) => {
+            if (current === null) {
+                return { name: user.first_name, wins: won ? 1 : 0, losses: won ? 0 : 1 };
+            } else {
+                if (won) current.wins = (current.wins || 0) + 1;
+                else current.losses = (current.losses || 0) + 1;
+                current.name = user.first_name;
+                return current;
+            }
+        });
+    }
+
+    function toggleLeaderboard(show) {
+        const modal = document.getElementById('leaderboard-modal');
+        modal.style.display = show ? 'flex' : 'none';
+        if (show) {
+            db.ref('stats').orderByChild('wins').limitToLast(10).once('value', (snap) => {
+                const list = document.getElementById('leaderboard-list');
+                list.innerHTML = '';
+                let players = [];
+                snap.forEach(child => { players.push(child.val()); });
+                players.reverse().forEach((p, index) => {
+                    list.innerHTML += `
+                        <div class="leaderboard-item">
+                            <span>${index+1}. ${p.name}</span>
+                            <span>
+                                <span class="win-text">W: ${p.wins || 0}</span> | 
+                                <span class="loss-text">L: ${p.losses || 0}</span>
+                            </span>
+                        </div>`;
+                });
+            });
+        }
+    }
+
     function updateFirebase() {
         if (!gameId || gameOver) return;
         db.ref('games/' + gameId + '/lastMove').set({
             player: myRole,
-            newBoard: JSON.stringify(board), // Massivni string qilib saqlash (xatolikni oldini oladi)
+            newBoard: JSON.stringify(board),
             newTurn: turn,
             ts: Date.now()
         });
@@ -119,13 +173,10 @@
     function executeMove(fromR, fromC, toR, toC, capturedPiece = null) {
         const piece = board[fromR][fromC];
         if (capturedPiece) board[capturedPiece.r][capturedPiece.c] = "empty";
-        
         board[toR][toC] = piece;
         board[fromR][fromC] = "empty";
 
-        if ((piece.type === 'white' && toR === 0) || (piece.type === 'black' && toR === 7)) {
-            piece.king = true;
-        }
+        if ((piece.type === 'white' && toR === 0) || (piece.type === 'black' && toR === 7)) piece.king = true;
 
         if (capturedPiece && getCaptureMoves(toR, toC, board[toR][toC]).length > 0) {
             selected = { r: toR, c: toC };
@@ -135,7 +186,6 @@
             mustJumpAgain = false;
             turn = (turn === 'white') ? 'black' : 'white';
         }
-        
         updateFirebase();
         render();
         return true;
@@ -163,10 +213,8 @@
         const rowDiff = toR - fromR;
         const absRow = Math.abs(rowDiff);
         const absCol = Math.abs(toC - fromC);
-
         if (absRow !== absCol || board[toR][toC] !== "empty") return false;
 
-        // Oddiy yurish (sakrashsiz)
         if (absRow === 1 && !mustJumpAgain) {
             if (!piece.king) {
                 if (piece.type === 'white' && rowDiff > 0) return false;
@@ -174,15 +222,11 @@
             }
             return executeMove(fromR, fromC, toR, toC);
         }
-
-        // Sakrash
         if (absRow === 2) {
             const midR = fromR + rowDiff / 2;
             const midC = fromC + (toC - fromC) / 2;
             const midPiece = board[midR][midC];
-            if (midPiece !== "empty" && midPiece.type !== piece.type) {
-                return executeMove(fromR, fromC, toR, toC, {r: midR, c: midC});
-            }
+            if (midPiece !== "empty" && midPiece.type !== piece.type) return executeMove(fromR, fromC, toR, toC, {r: midR, c: midC});
         }
         return false;
     }
@@ -214,14 +258,9 @@
         if (gameOver || turn !== myRole) return;
         const piece = board[r][c];
         if (selected) {
-            if (piece !== "empty" && piece.type === turn && !mustJumpAgain) {
-                selected = { r: r, c: c };
-            } else {
-                tryMove(selected.r, selected.c, r, c);
-            }
-        } else if (piece !== "empty" && piece.type === turn) {
-            selected = { r: r, c: c };
-        }
+            if (piece !== "empty" && piece.type === turn && !mustJumpAgain) selected = { r: r, c: c };
+            else tryMove(selected.r, selected.c, r, c);
+        } else if (piece !== "empty" && piece.type === turn) selected = { r: r, c: c };
         render();
     }
 
@@ -231,9 +270,14 @@
             if (p.type === 'white') w++;
             if (p.type === 'black') b++;
         }));
-        if (w === 0 || b === 0) {
+        if ((w === 0 || b === 0) && !gameOver) {
             gameOver = true;
-            document.getElementById('status').innerText = w === 0 ? "🏆 Qoralar yutdi!" : "🏆 Oqlar yutdi!";
+            const winner = w === 0 ? 'black' : 'white';
+            document.getElementById('status').innerText = winner === 'black' ? "🏆 Qoralar yutdi!" : "🏆 Oqlar yutdi!";
+            
+            // Statistikani yangilash
+            updateStats(myRole === winner);
+            
             setTimeout(() => location.reload(), 5000);
         }
     }
@@ -243,7 +287,6 @@
         gameId = id;
         myRole = role;
         board = existingBoard ? JSON.parse(existingBoard) : getInitialBoard();
-        
         document.getElementById('menu').style.display = 'none';
         document.getElementById('board').style.display = 'grid';
         document.getElementById('status').style.display = 'block';
@@ -262,14 +305,12 @@
         db.ref('presence/' + user.id).update({ inGame: true });
     }
 
-    // Taklif yuborish
     window.invite = function(targetId) {
         const newGameId = user.id + "_" + targetId;
         db.ref('invites/' + targetId).set({ fromId: user.id, fromName: user.first_name, gameId: newGameId, ts: Date.now() });
         startGame(newGameId, 'white');
     };
 
-    // Takliflarni eshitish
     db.ref('invites/' + user.id).on('value', (snap) => {
         const inv = snap.val();
         if (inv && !inGame && inv.ts > sessionStartTime) {
@@ -280,7 +321,6 @@
         }
     });
 
-    // Onlayn foydalanuvchilar (O'zingizniki qoldi)
     db.ref('presence/' + user.id).set({ name: user.first_name, online: true, inGame: false });
     db.ref('presence').on('value', (snap) => {
         const listDiv = document.getElementById('online-list');
