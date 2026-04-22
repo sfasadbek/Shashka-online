@@ -87,11 +87,9 @@
     let inGame = false;
     let sessionStartTime = Date.now();
 
-    // Presence
     db.ref('presence/' + user.id).set({ name: user.first_name, online: true, inGame: false });
     db.ref('presence/' + user.id).onDisconnect().remove();
 
-    // List online users
     db.ref('presence').on('value', (snap) => {
         const list = document.getElementById('online-list');
         list.innerHTML = '';
@@ -110,7 +108,6 @@
         alert("Taklif yuborildi...");
     }
 
-    // Listen for invites
     db.ref('invites/' + user.id).on('value', (snap) => {
         const val = snap.val();
         if(val && !inGame && val.ts > sessionStartTime) {
@@ -126,7 +123,6 @@
         }
     });
 
-    // Listen for accepted games
     db.ref('games').on('child_added', (snap) => {
         const val = snap.val();
         if (!inGame && snap.key.startsWith(user.id + "_") && val.createdAt > sessionStartTime) {
@@ -175,11 +171,13 @@
                 board[r][c] = piece;
             }
         }
+        render(); // Taxtani darhol chizish
         updateFirebase();
     }
 
     function render() {
         const bDiv = document.getElementById('board');
+        if (!bDiv) return;
         bDiv.innerHTML = '';
         if(!board || board.length === 0) return;
 
@@ -235,18 +233,14 @@
             if (board[currR][currC]) piecesInWay.push({ r: currR, c: currC, type: board[currR][currC].type });
         }
 
-        // Oddiy yurish (faqat 1 katak)
         if (piecesInWay.length === 0 && !mustJumpAgain) {
             if (!p.king) {
                 if (ar !== 1) return;
-                if (p.type === 'white' && rd > 0) return; // Oqlar faqat tepaga
-                if (p.type === 'black' && rd < 0) return; // Qoralar faqat pastga
+                if (p.type === 'white' && rd > 0) return;
+                if (p.type === 'black' && rd < 0) return;
             }
             executeMove(fR, fC, tR, tC);
-        } 
-        // Yeyish (to'siq 1 ta bo'lsa va dushman bo'lsa)
-        else if (piecesInWay.length === 1 && piecesInWay[0].type !== p.type) {
-            // Damka bo'lmasa masofa cheklangan (ar=2), damka bo'lsa xohlagancha
+        } else if (piecesInWay.length === 1 && piecesInWay[0].type !== p.type) {
             if (!p.king && ar !== 2) return;
             board[piecesInWay[0].r][piecesInWay[0].c] = null;
             executeMove(fR, fC, tR, tC, true);
@@ -255,9 +249,7 @@
 
     function executeMove(fR, fC, tR, tC, wasJump = false) {
         let p = board[fR][fC];
-        // Damkaga aylanish
         if ((p.type === 'white' && tR === 0) || (p.type === 'black' && tR === 7)) p.king = true;
-        
         board[tR][tC] = p;
         board[fR][fC] = null;
 
@@ -270,6 +262,7 @@
             turn = (turn === 'white') ? 'black' : 'white';
         }
         updateFirebase();
+        render();
     }
 
     function canJumpMore(r, c) {
@@ -279,11 +272,11 @@
         for (let [dr, dc] of ds) {
             let limit = p.king ? 7 : 2;
             for (let i = 1; i < limit; i++) {
-                let mR = r + i * dr, mC = c + i * dc; // dushman
-                let tR = r + (i+1) * dr, tC = c + (i+1) * dc; // tushadigan joy
+                let mR = r + i * dr, mC = c + i * dc;
+                let tR = r + (i+1) * dr, tC = c + (i+1) * dc;
                 if (tR >= 0 && tR < 8 && tC >= 0 && tC < 8) {
                     if (board[mR][mC] && board[mR][mC].type !== p.type && !board[tR][tC]) return true;
-                    if (board[mR][mC]) break; // to'siq bo'lsa bu yo'nalish yopiq
+                    if (board[mR][mC]) break;
                 }
             }
         }
@@ -304,9 +297,8 @@
         let w = 0, b = 0;
         board.forEach(row => row.forEach(p => { if(p?.type==='white') w++; if(p?.type==='black') b++; }));
         if (board.length > 0 && (w === 0 || b === 0)) {
-            const winnerText = (w === 0 ? "QORALAR" : "OQLAR");
-            document.getElementById('status').innerText = "O'YIN TUGADI! " + winnerText + " YUTDI!";
             gameOver = true;
+            document.getElementById('status').innerText = "O'YIN TUGADI! " + (w === 0 ? "QORALAR" : "OQLAR") + " YUTDI!";
             setTimeout(() => location.reload(), 5000);
         }
     }
