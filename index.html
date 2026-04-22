@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Telegram Shashka Online</title>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <style>
+        * { box-sizing: border-box; touch-action: manipulation; }
+        body { 
+            display: flex; flex-direction: column; justify-content: center; 
+            align-items: center; height: 100vh; background: #1a1a1a; 
+            margin: 0; font-family: sans-serif; overflow: hidden; color: white;
+        }
+        
+        /* Menyu Stili */
+        #menu { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+        #menu h1 { color: #f1c40f; margin-bottom: 30px; }
+        .btn { background: #f1c40f; color: black; border: none; padding: 15px 30px; border-radius: 10px; font-weight: bold; font-size: 18px; margin: 10px; cursor: pointer; width: 80%; }
+        #online-list { width: 80%; max-height: 200px; overflow-y: auto; background: #2c2c2c; border-radius: 10px; padding: 10px; }
+        .user-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #444; }
+
+        /* O'yin maydoni */
+        #status { font-size: 5vw; margin-bottom: 15px; font-weight: bold; text-transform: uppercase; text-align: center; }
+        #board {
+            width: 95vw; height: 95vw; max-width: 450px; max-height: 450px;
+            border: 6px solid #3e2723; display: grid;
+            grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr);
+        }
+        .cell { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
+        .black-cell { background-color: #5d4037; }
+        .white-cell { background-color: #d7ccc8; }
+        .piece { width: 82%; height: 82%; border-radius: 50%; display: flex; justify-content: center; align-items: center; transition: transform 0.2s; position: relative; }
+        .white-piece { background: radial-gradient(circle, #ffffff, #cccccc); border: 2px solid #999; }
+        .black-piece { background: radial-gradient(circle, #424242, #000); border: 2px solid #111; }
+        .selected { transform: scale(1.1); box-shadow: 0 0 15px #ffeb3b; border: 3px solid #ffeb3b; }
+        .king::after { content: '♔'; color: #f1c40f; font-size: 7vw; font-weight: bold; }
+        @media (min-width: 450px) { .king::after { font-size: 35px; } }
+    </style>
+</head>
+<body>
+
+<div id="menu">
+    <h1>SHASHKA ONLINE</h1>
+    <p id="my-name">Yuklanmoqda...</p>
+    <h3>Online foydalanuvchilar:</h3>
+    <div id="online-list">Hozircha hech kim yo'q...</div>
+    <button class="btn" onclick="tg.close()">Chiqish</button>
+</div>
+
+<div id="status" style="display:none;">Oqlar yurishi</div>
+<div id="board" style="display:none;"></div>
+
+<script>
+    // 1. FIREBASE SOZLAMALARI (Sizning ma'lumotlaringiz o'rnatildi)
+    const firebaseConfig = {
+        apiKey: "AIzaSyBCvV83aHz4VXCiUXykAmcxIj3mOCjeKaM",
+        authDomain: "shashka-68221.firebaseapp.com",
+        databaseURL: "https://shashka-68221-default-rtdb.firebaseio.com",
+        projectId: "shashka-68221",
+        storageBucket: "shashka-68221.firebasestorage.app",
+        messagingSenderId: "1097688111504",
+        appId: "1:1097688111504:web:40e9c5219f4840ae2ebb15",
+        measurementId: "G-CCGSV522L9"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // 2. TELEGRAM VA FOYDALANUVCHI
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+    const user = tg.initDataUnsafe.user || { first_name: "Mehmon_" + Math.floor(Math.random()*1000), id: "guest_" + Date.now() };
+    document.getElementById('my-name').innerText = "Salom, " + user.first_name;
+
+    let myRole = ''; 
+    let gameId = '';
+    let isMyTurn = false;
+
+    // Online foydalanuvchilarni ko'rish
+    db.ref('presence/' + user.id).set({ name: user.first_name, online: true });
+    db.ref('presence/' + user.id).onDisconnect().remove();
+
+    db.ref('presence').on('value', (snap) => {
+        const list = document.getElementById('online-list');
+        list.innerHTML = '';
+        snap.forEach((child) => {
+            if(child.key != user.id) {
+                list.innerHTML += `<div class="user-item">${child.val().name} <button onclick="invite('${child.key}')">Taklif</button></div>`;
+            }
+        });
+    });
+
+    function invite(targetId) {
+        db.ref('invites/' + targetId).set({ fromId: user.id, fromName: user.first_name });
+        alert("Taklif yuborildi, kutilmoqda...");
+    }
+
+    db.ref('invites/' + user.id).on('value', (snap) => {
+        if(snap.val()) {
+            if(confirm(snap.val().fromName + " taklif yubordi. Qabul qilasizmi?")) {
+                gameId = snap.val().fromId + "_" + user.id;
+                myRole = 'black';
+                startGame(gameId);
+                db.ref('invites/' + user.id).remove();
+                db.ref('games/' + gameId).set({ board: null, turn: 'white', start: true });
+            }
+        }
+    });
+
+    // --- SHASHKA MANTIQI ---
+    const boardDiv = document.getElementById('board');
+    const statusDiv = document.getElementById('status');
+    let board = [];
+    let turn = 'white';
+    let selected = null;
+    let mustJumpAgain = false;
+    let gameOver = false;
+
+    function startGame(id) {
+        gameId = id;
+        document.getElementById('menu').style.display = 'none';
+        boardDiv.style.display = 'grid';
+        statusDiv.style.display = 'block';
+        if(!myRole) myRole = 'white';
+        init();
+        
+        db.ref('games/' + gameId + '/lastMove').on('value', (snap) => {
+            if(snap.val() && snap.val().player !== myRole) {
+                syncFromFirebase(snap.val().newBoard, snap.val().newTurn);
+            }
+        });
+    }
+
+    function syncFromFirebase(newBoard, newTurn) {
+        board = newBoard;
+        turn = newTurn;
+        render();
+    }
+
+    function init() {
+        for (let r = 0; r < 8; r++) {
+            board[r] = [];
+            for (let c = 0; c < 8; c++) {
+                let piece = null;
+                if ((r + c) % 2 !== 0) {
+                    if (r < 3) piece = { type: 'black', king: false };
+                    else if (r > 4) piece = { type: 'white', king: false };
+                }
+                board[r][c] = piece;
+            }
+        }
+        render();
+    }
+
+    function render() {
+        boardDiv.innerHTML = '';
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const cell = document.createElement('div');
+                cell.className = `cell ${(r + c) % 2 === 0 ? 'white-cell' : 'black-cell'}`;
+                cell.onclick = () => handleClick(r, c);
+                if (board[r][c]) {
+                    const p = document.createElement('div');
+                    p.className = `piece ${board[r][c].type}-piece ${board[r][c].king ? 'king' : ''}`;
+                    if (selected && selected.r === r && selected.c === c) p.classList.add('selected');
+                    cell.appendChild(p);
+                }
+                boardDiv.appendChild(cell);
+            }
+        }
+        statusDiv.innerText = turn === 'white' ? "Oqlar yurishi" : "Qoralar yurishi";
+        checkWinner();
+    }
+
+    function handleClick(r, c) {
+        if (gameOver || turn !== myRole) return;
+        const piece = board[r][c];
+        if (selected) {
+            if (piece && piece.type === turn && !mustJumpAgain) {
+                selected = { r, c };
+            } else {
+                tryMove(selected.r, selected.c, r, c);
+            }
+        } else if (piece && piece.type === turn) {
+            selected = { r, c };
+        }
+        render();
+    }
+
+    function tryMove(fR, fC, tR, tC) {
+        if (board[tR][tC] !== null) return;
+        const rowDiff = tR - fR; const colDiff = tC - fC;
+        const absR = Math.abs(rowDiff); const absC = Math.abs(colDiff);
+        if (absR !== absC) return;
+        const piece = board[fR][fC];
+        const rStep = rowDiff / absR; const cStep = colDiff / absC;
+        let piecesInWay = [];
+        for (let i = 1; i < absR; i++) {
+            let currR = fR + i * rStep; let currC = fC + i * cStep;
+            if (board[currR][currC]) piecesInWay.push({ r: currR, c: currC, type: board[currR][currC].type });
+        }
+        if (piecesInWay.length === 0 && !mustJumpAgain) {
+            if (!piece.king) {
+                if (absR > 1) return;
+                if (piece.type === 'white' && rowDiff > 0) return;
+                if (piece.type === 'black' && rowDiff < 0) return;
+            }
+            executeMove(fR, fC, tR, tC);
+        } else if (piecesInWay.length === 1 && piecesInWay[0].type !== piece.type) {
+            if (!piece.king && absR > 2) return;
+            board[piecesInWay[0].r][piecesInWay[0].c] = null;
+            executeMove(fR, fC, tR, tC, true);
+        }
+    }
+
+    function executeMove(fR, fC, tR, tC, wasJump = false) {
+        let p = board[fR][fC];
+        if ((p.type === 'white' && tR === 0) || (p.type === 'black' && tR === 7)) p.king = true;
+        board[tR][tC] = p;
+        board[fR][fC] = null;
+
+        if (wasJump && canJumpMore(tR, tC)) {
+            selected = { r: tR, c: tC };
+            mustJumpAgain = true;
+        } else {
+            selected = null;
+            mustJumpAgain = false;
+            turn = turn === 'white' ? 'black' : 'white';
+        }
+        
+        db.ref('games/' + gameId + '/lastMove').set({
+            player: myRole,
+            newBoard: board,
+            newTurn: turn
+        });
+    }
+
+    function canJumpMore(r, c) {
+        const p = board[r][c];
+        const dirs = [[1,1], [1,-1], [-1,1], [-1,-1]];
+        for (let [dr, dc] of dirs) {
+            let range = p.king ? 7 : 2;
+            for (let i = 1; i <= range; i++) {
+                let mR = r + i * dr, mC = c + i * dc;
+                let tR = r + (i+1) * dr, tC = c + (i+1) * dc;
+                if (tR >= 0 && tR < 8 && tC >= 0 && tC < 8) {
+                    if (board[mR][mC] && board[mR][mC].type !== p.type && !board[tR][tC]) return true;
+                    if (board[mR][mC]) break;
+                }
+            }
+        }
+        return false;
+    }
+
+    function checkWinner() {
+        let whiteLeft = 0; let blackLeft = 0;
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                if (board[r][c]?.type === 'white') whiteLeft++;
+                if (board[r][c]?.type === 'black') blackLeft++;
+            }
+        }
+        if (whiteLeft === 0 || blackLeft === 0) {
+            statusDiv.innerHTML = "O'YIN TUGADI! " + (whiteLeft === 0 ? "QORALAR" : "OQLAR") + " YUTDI!";
+            gameOver = true;
+        }
+    }
+</script>
+</body>
+</html>
