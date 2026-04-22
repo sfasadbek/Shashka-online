@@ -77,14 +77,8 @@
     };
     document.getElementById('my-name').innerText = "Salom, " + user.first_name;
 
-    let myRole = ''; 
-    let gameId = '';
-    let board = [];
-    let turn = 'white';
-    let selected = null;
-    let mustJumpAgain = false;
-    let gameOver = false;
-    let inGame = false;
+    let myRole = '', gameId = '', board = [], turn = 'white', selected = null;
+    let mustJumpAgain = false, gameOver = false, inGame = false;
     let sessionStartTime = Date.now();
 
     db.ref('presence/' + user.id).set({ name: user.first_name, online: true, inGame: false });
@@ -139,11 +133,10 @@
         document.getElementById('menu').style.display = 'none';
         document.getElementById('board').style.display = 'grid';
         document.getElementById('status').style.display = 'block';
-        
         if (myRole === 'black') document.getElementById('board').classList.add('rotate-board');
         
         if (myRole === 'white') {
-            initBoardData();
+            initBoardData(); 
         }
 
         db.ref('games/' + id + '/lastMove').on('value', (snap) => {
@@ -171,13 +164,12 @@
                 board[r][c] = piece;
             }
         }
-        render(); // Taxtani darhol chizish
         updateFirebase();
+        render(); // Majburiy chizish
     }
 
     function render() {
         const bDiv = document.getElementById('board');
-        if (!bDiv) return;
         bDiv.innerHTML = '';
         if(!board || board.length === 0) return;
 
@@ -186,7 +178,6 @@
                 const cell = document.createElement('div');
                 cell.className = `cell ${(r + c) % 2 === 0 ? 'white-cell' : 'black-cell'}`;
                 cell.onclick = () => handleClick(r, c);
-                
                 if (board[r] && board[r][c]) {
                     const p = document.createElement('div');
                     p.className = `piece ${board[r][c].type}-piece ${board[r][c].king ? 'king' : ''}`;
@@ -220,19 +211,14 @@
 
     function tryMove(fR, fC, tR, tC) {
         if (board[tR][tC] !== null) return;
-        const rd = tR - fR, cd = tC - fC;
-        const ar = Math.abs(rd), ac = Math.abs(cd);
+        const rd = tR - fR, cd = tC - fC, ar = Math.abs(rd), ac = Math.abs(cd);
         if (ar !== ac) return;
-
-        const p = board[fR][fC];
-        const rs = rd / ar, cs = cd / ac;
+        const p = board[fR][fC], rs = rd / ar, cs = cd / ac;
         let piecesInWay = [];
-
         for (let i = 1; i < ar; i++) {
             let currR = fR + i * rs, currC = fC + i * cs;
             if (board[currR][currC]) piecesInWay.push({ r: currR, c: currC, type: board[currR][currC].type });
         }
-
         if (piecesInWay.length === 0 && !mustJumpAgain) {
             if (!p.king) {
                 if (ar !== 1) return;
@@ -250,16 +236,12 @@
     function executeMove(fR, fC, tR, tC, wasJump = false) {
         let p = board[fR][fC];
         if ((p.type === 'white' && tR === 0) || (p.type === 'black' && tR === 7)) p.king = true;
-        board[tR][tC] = p;
-        board[fR][fC] = null;
-
+        board[tR][tC] = p; board[fR][fC] = null;
         if (wasJump && canJumpMore(tR, tC)) {
-            selected = { r: tR, c: tC };
-            mustJumpAgain = true;
+            selected = { r: tR, c: tC }; mustJumpAgain = true;
         } else {
-            selected = null;
-            mustJumpAgain = false;
-            turn = (turn === 'white') ? 'black' : 'white';
+            selected = null; mustJumpAgain = false;
+            turn = turn === 'white' ? 'black' : 'white';
         }
         updateFirebase();
         render();
@@ -267,13 +249,11 @@
 
     function canJumpMore(r, c) {
         const p = board[r][c];
-        if(!p) return false;
         const ds = [[1,1], [1,-1], [-1,1], [-1,-1]];
         for (let [dr, dc] of ds) {
             let limit = p.king ? 7 : 2;
             for (let i = 1; i < limit; i++) {
-                let mR = r + i * dr, mC = c + i * dc;
-                let tR = r + (i+1) * dr, tC = c + (i+1) * dc;
+                let mR = r + i * dr, mC = c + i * dc, tR = r + (i+1) * dr, tC = c + (i+1) * dc;
                 if (tR >= 0 && tR < 8 && tC >= 0 && tC < 8) {
                     if (board[mR][mC] && board[mR][mC].type !== p.type && !board[tR][tC]) return true;
                     if (board[mR][mC]) break;
@@ -286,10 +266,7 @@
     function updateFirebase() {
         if(!gameId) return;
         db.ref('games/' + gameId + '/lastMove').set({
-            player: myRole,
-            newBoard: board,
-            newTurn: turn,
-            ts: Date.now()
+            player: myRole, newBoard: board, newTurn: turn, ts: Date.now()
         });
     }
 
@@ -297,8 +274,8 @@
         let w = 0, b = 0;
         board.forEach(row => row.forEach(p => { if(p?.type==='white') w++; if(p?.type==='black') b++; }));
         if (board.length > 0 && (w === 0 || b === 0)) {
-            gameOver = true;
             document.getElementById('status').innerText = "O'YIN TUGADI! " + (w === 0 ? "QORALAR" : "OQLAR") + " YUTDI!";
+            gameOver = true;
             setTimeout(() => location.reload(), 5000);
         }
     }
