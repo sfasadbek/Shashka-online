@@ -18,10 +18,8 @@
         #menu { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         #menu h1 { color: #f1c40f; margin-bottom: 30px; }
         
-        /* Kubok tugmasi */
         #leaderboard-btn { position: absolute; top: 20px; right: 20px; font-size: 30px; cursor: pointer; background: #2c2c2c; padding: 10px; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid #f1c40f; }
         
-        /* Reyting oynasi */
         #leaderboard-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 200; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         .leaderboard-content { width: 90%; max-width: 400px; background: #2c2c2c; border-radius: 15px; padding: 20px; max-height: 80vh; overflow-y: auto; }
         .leaderboard-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #444; font-size: 14px; }
@@ -50,7 +48,9 @@
         .black-piece { background: radial-gradient(circle, #3a3a3a, #1a1a1a); border: 2px solid #333; }
         .selected { transform: scale(1.1); box-shadow: 0 0 15px #ffeb3b; border: 3px solid #ffeb3b; filter: brightness(1.05); }
         .king::after { content: '👑'; font-size: 6vw; font-weight: bold; text-shadow: 1px 1px 1px rgba(0,0,0,0.3); }
-        @media (min-width: 450px) { .king::after { font-size: 32px; } }
+        
+        /* Taslim bo'lish tugmasi */
+        #resign-btn { margin-top: 20px; background: #e74c3c; color: white; display: none; padding: 10px 20px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -73,6 +73,7 @@
 
 <div id="status" style="display:none;">Oqlar yurishi</div>
 <div id="board" style="display:none;"></div>
+<button id="resign-btn" onclick="resignGame()">🏳️ Taslim bo'lish</button>
 
 <script>
     const firebaseConfig = {
@@ -93,6 +94,7 @@
         first_name: "Mehmon_" + Math.floor(Math.random()*10000), 
         id: "guest_" + Date.now()
     };
+    
     document.getElementById('my-name').innerHTML = "👋 Salom, " + user.first_name;
 
     let myRole = '';
@@ -103,8 +105,8 @@
     let mustJumpAgain = false;
     let gameOver = false;
     let inGame = false;
+    let opponentId = '';
     let sessionStartTime = Date.now();
-    let currentGameRef = null;
 
     function getInitialBoard() {
         const newBoard = [];
@@ -124,16 +126,12 @@
     }
 
     function updateStats(won) {
-        const statsRef = db.ref('stats/' + user.id);
-        statsRef.transaction((current) => {
-            if (current === null) {
-                return { name: user.first_name, wins: won ? 1 : 0, losses: won ? 0 : 1 };
-            } else {
-                if (won) current.wins = (current.wins || 0) + 1;
-                else current.losses = (current.losses || 0) + 1;
-                current.name = user.first_name;
-                return current;
-            }
+        db.ref('stats/' + user.id).transaction((current) => {
+            if (current === null) return { name: user.first_name, wins: won ? 1 : 0, losses: won ? 0 : 1 };
+            if (won) current.wins = (current.wins || 0) + 1;
+            else current.losses = (current.losses || 0) + 1;
+            current.name = user.first_name;
+            return current;
         });
     }
 
@@ -147,14 +145,7 @@
                 let players = [];
                 snap.forEach(child => { players.push(child.val()); });
                 players.reverse().forEach((p, index) => {
-                    list.innerHTML += `
-                        <div class="leaderboard-item">
-                            <span>${index+1}. ${p.name}</span>
-                            <span>
-                                <span class="win-text">W: ${p.wins || 0}</span> | 
-                                <span class="loss-text">L: ${p.losses || 0}</span>
-                            </span>
-                        </div>`;
+                    list.innerHTML += `<div class="leaderboard-item"><span>${index+1}. ${p.name}</span><span><span class="win-text">W: ${p.wins || 0}</span> | <span class="loss-text">L: ${p.losses || 0}</span></span></div>`;
                 });
             });
         }
@@ -170,14 +161,76 @@
         });
     }
 
+    function resignGame() {
+        if (confirm("Rostdan ham taslim bo'lmoqchimisiz? Bu mag'lubiyat hisoblanadi.")) {
+            finishGame(false, "Siz taslim bo'ldingiz!");
+            db.ref('games/' + gameId + '/event').set({ type: 'resign', by: user.id });
+        }
+    }
+
+    function finishGame(won, message) {
+        if (gameOver) return;
+        gameOver = true;
+        alert(message);
+        updateStats(won);
+        
+        // O'yinni tozalash
+        if (gameId) db.ref('games/' + gameId).remove();
+        db.ref('presence/' + user.id).update({ inGame: false });
+        location.reload();
+    }
+
+    function startGame(id, role, oppId, existingBoard = null) {
+        inGame = true;
+        gameId = id;
+        myRole = role;
+        opponentId = oppId;
+        board = existingBoard ? JSON.parse(existingBoard) : getInitialBoard();
+        
+        document.getElementById('menu').style.display = 'none';
+        document.getElementById('board').style.display = 'grid';
+        document.getElementById('status').style.display = 'block';
+        document.getElementById('resign-btn').style.display = 'block';
+        
+        if (myRole === 'black') document.getElementById('board').classList.add('rotate-board');
+
+        // Harakatlarni kuzatish
+        db.ref('games/' + gameId + '/lastMove').on('value', (snap) => {
+            const data = snap.val();
+            if (data && data.player !== myRole) {
+                board = JSON.parse(data.newBoard);
+                turn = data.newTurn;
+                render();
+            }
+        });
+
+        // Maxsus hodisalarni kuzatish (taslim bo'lish yoki raqib chiqishi)
+        db.ref('games/' + gameId + '/event').on('value', (snap) => {
+            const ev = snap.val();
+            if (ev && ev.by !== user.id) {
+                if (ev.type === 'resign' || ev.type === 'left') {
+                    finishGame(true, "Raqib o'yinni tark etdi! Siz g'olib bo'ldingiz.");
+                }
+            }
+        });
+
+        // Raqib onlaynligini tekshirish
+        db.ref('presence/' + opponentId).on('value', (snap) => {
+            if (inGame && !gameOver && (!snap.exists() || snap.val().online === false)) {
+                finishGame(true, "Raqib aloqadan chiqdi! Siz g'olibsiz.");
+            }
+        });
+
+        render();
+        db.ref('presence/' + user.id).update({ inGame: true });
+    }
+
     function executeMove(fromR, fromC, toR, toC, capturedPiece = null) {
         const piece = board[fromR][fromC];
         if (capturedPiece) board[capturedPiece.r][capturedPiece.c] = "empty";
         board[toR][toC] = piece;
         board[fromR][fromC] = "empty";
-
         if ((piece.type === 'white' && toR === 0) || (piece.type === 'black' && toR === 7)) piece.king = true;
-
         if (capturedPiece && getCaptureMoves(toR, toC, board[toR][toC]).length > 0) {
             selected = { r: toR, c: toC };
             mustJumpAgain = true;
@@ -214,7 +267,6 @@
         const absRow = Math.abs(rowDiff);
         const absCol = Math.abs(toC - fromC);
         if (absRow !== absCol || board[toR][toC] !== "empty") return false;
-
         if (absRow === 1 && !mustJumpAgain) {
             if (!piece.king) {
                 if (piece.type === 'white' && rowDiff > 0) return false;
@@ -238,7 +290,15 @@
             for (let c = 0; c < 8; c++) {
                 const cell = document.createElement('div');
                 cell.className = `cell ${(r + c) % 2 === 0 ? 'white-cell' : 'black-cell'}`;
-                cell.onclick = () => handleClick(r, c);
+                cell.onclick = () => {
+                    if (gameOver || turn !== myRole) return;
+                    const piece = board[r][c];
+                    if (selected) {
+                        if (piece !== "empty" && piece.type === turn && !mustJumpAgain) selected = { r: r, c: c };
+                        else tryMove(selected.r, selected.c, r, c);
+                    } else if (piece !== "empty" && piece.type === turn) selected = { r: r, c: c };
+                    render();
+                };
                 const piece = board[r][c];
                 if (piece && piece !== "empty") {
                     const pieceDiv = document.createElement('div');
@@ -251,64 +311,20 @@
             }
         }
         document.getElementById('status').innerText = turn === 'white' ? "⚪ Oqlar yurishi" : "⚫ Qoralar yurishi";
-        checkWinner();
-    }
-
-    function handleClick(r, c) {
-        if (gameOver || turn !== myRole) return;
-        const piece = board[r][c];
-        if (selected) {
-            if (piece !== "empty" && piece.type === turn && !mustJumpAgain) selected = { r: r, c: c };
-            else tryMove(selected.r, selected.c, r, c);
-        } else if (piece !== "empty" && piece.type === turn) selected = { r: r, c: c };
-        render();
-    }
-
-    function checkWinner() {
+        
+        // G'olibni tekshirish
         let w = 0, b = 0;
-        board.forEach(row => row.forEach(p => {
-            if (p.type === 'white') w++;
-            if (p.type === 'black') b++;
-        }));
+        board.forEach(row => row.forEach(p => { if (p.type === 'white') w++; if (p.type === 'black') b++; }));
         if ((w === 0 || b === 0) && !gameOver) {
-            gameOver = true;
             const winner = w === 0 ? 'black' : 'white';
-            document.getElementById('status').innerText = winner === 'black' ? "🏆 Qoralar yutdi!" : "🏆 Oqlar yutdi!";
-            
-            // Statistikani yangilash
-            updateStats(myRole === winner);
-            
-            setTimeout(() => location.reload(), 5000);
+            finishGame(myRole === winner, winner === 'black' ? "Qoralar yutdi!" : "Oqlar yutdi!");
         }
-    }
-
-    function startGame(id, role, existingBoard = null) {
-        inGame = true;
-        gameId = id;
-        myRole = role;
-        board = existingBoard ? JSON.parse(existingBoard) : getInitialBoard();
-        document.getElementById('menu').style.display = 'none';
-        document.getElementById('board').style.display = 'grid';
-        document.getElementById('status').style.display = 'block';
-        if (myRole === 'black') document.getElementById('board').classList.add('rotate-board');
-
-        currentGameRef = db.ref('games/' + gameId + '/lastMove');
-        currentGameRef.on('value', (snap) => {
-            const data = snap.val();
-            if (data && data.player !== myRole) {
-                board = JSON.parse(data.newBoard);
-                turn = data.newTurn;
-                render();
-            }
-        });
-        render();
-        db.ref('presence/' + user.id).update({ inGame: true });
     }
 
     window.invite = function(targetId) {
         const newGameId = user.id + "_" + targetId;
         db.ref('invites/' + targetId).set({ fromId: user.id, fromName: user.first_name, gameId: newGameId, ts: Date.now() });
-        startGame(newGameId, 'white');
+        startGame(newGameId, 'white', targetId);
     };
 
     db.ref('invites/' + user.id).on('value', (snap) => {
@@ -316,17 +332,21 @@
         if (inv && !inGame && inv.ts > sessionStartTime) {
             if (confirm(inv.fromName + " taklif qildi. Qabul qilasizmi?")) {
                 db.ref('invites/' + user.id).remove();
-                startGame(inv.gameId, 'black');
+                startGame(inv.gameId, 'black', inv.fromId);
             }
         }
     });
 
-    db.ref('presence/' + user.id).set({ name: user.first_name, online: true, inGame: false });
+    // Onlaynlik va uzilishni nazorat qilish
+    const myPresenceRef = db.ref('presence/' + user.id);
+    myPresenceRef.set({ name: user.first_name, online: true, inGame: false });
+    myPresenceRef.onDisconnect().remove();
+
     db.ref('presence').on('value', (snap) => {
         const listDiv = document.getElementById('online-list');
         listDiv.innerHTML = '';
         snap.forEach(child => {
-            if (child.key !== user.id && !child.val().inGame) {
+            if (child.key !== user.id && !child.val().inGame && child.val().online !== false) {
                 listDiv.innerHTML += `<div class="user-item"><span>👤 ${child.val().name}</span> <button class="invite-btn" onclick="invite('${child.key}')">🎮 Taklif</button></div>`;
             }
         });
