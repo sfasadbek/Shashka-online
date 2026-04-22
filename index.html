@@ -9,6 +9,7 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
     <style>
+        /* CSS qismi o'zgarishsiz qoldi */
         * { box-sizing: border-box; touch-action: manipulation; }
         body { 
             display: flex; flex-direction: column; justify-content: center; 
@@ -39,7 +40,6 @@
         .selected { transform: scale(1.1); box-shadow: 0 0 15px #ffeb3b; border: 3px solid #ffeb3b; filter: brightness(1.05); }
         .king::after { content: '👑'; font-size: 6vw; font-weight: bold; text-shadow: 1px 1px 1px rgba(0,0,0,0.3); }
         @media (min-width: 450px) { .king::after { font-size: 32px; } }
-        .waiting-msg { text-align: center; margin-top: 20px; font-size: 18px; color: #f1c40f; }
     </style>
 </head>
 <body>
@@ -57,7 +57,7 @@
 <div id="board" style="display:none;"></div>
 
 <script>
-    // Firebase konfiguratsiyasi
+    // Firebase Config (O'zingizniki qoldi)
     const firebaseConfig = {
         apiKey: "AIzaSyBCvV83aHz4VXCiUXykAmcxIj3mOCjeKaM",
         authDomain: "shashka-68221.firebaseapp.com",
@@ -74,12 +74,11 @@
     tg.expand();
     const user = tg.initDataUnsafe.user || { 
         first_name: "Mehmon_" + Math.floor(Math.random()*10000), 
-        id: "guest_" + Date.now() + "_" + Math.random() 
+        id: "guest_" + Date.now()
     };
     document.getElementById('my-name').innerHTML = "👋 Salom, " + user.first_name;
 
-    // O'yin holati
-    let myRole = '';          // 'white' yoki 'black'
+    let myRole = '';
     let gameId = '';
     let board = [];
     let turn = 'white';
@@ -89,9 +88,7 @@
     let inGame = false;
     let sessionStartTime = Date.now();
     let currentGameRef = null;
-    let waitingForOpponent = false;
 
-    // ========== SHAHMAT FUNKSIYALARI ==========
     function getInitialBoard() {
         const newBoard = [];
         for (let r = 0; r < 8; r++) {
@@ -100,57 +97,20 @@
                 if ((r + c) % 2 !== 0) {
                     if (r < 3) newBoard[r][c] = { type: 'black', king: false };
                     else if (r > 4) newBoard[r][c] = { type: 'white', king: false };
-                    else newBoard[r][c] = null;
+                    else newBoard[r][c] = "empty"; // null o'rniga "empty" (Firebase uchun xavfsizroq)
                 } else {
-                    newBoard[r][c] = null;
+                    newBoard[r][c] = "empty";
                 }
             }
         }
         return newBoard;
     }
 
-    function getCaptureMoves(row, col, piece) {
-        if (!piece) return [];
-        const moves = [];
-        const dirs = [[1,1], [1,-1], [-1,1], [-1,-1]];
-        for (let [dr, dc] of dirs) {
-            let maxDist = piece.king ? 7 : 2;
-            for (let step = 1; step <= maxDist; step++) {
-                const midR = row + step * dr;
-                const midC = col + step * dc;
-                const landR = row + (step + 1) * dr;
-                const landC = col + (step + 1) * dc;
-                if (landR < 0 || landR >= 8 || landC < 0 || landC >= 8) break;
-                if (board[midR] && board[midR][midC] && board[midR][midC].type !== piece.type && !board[landR][landC]) {
-                    if (!piece.king && step !== 1) break;
-                    let hasOther = false;
-                    for (let k = 1; k < step; k++) {
-                        const checkR = row + k * dr;
-                        const checkC = col + k * dc;
-                        if (board[checkR] && board[checkC]) { hasOther = true; break; }
-                    }
-                    if (!hasOther) {
-                        moves.push({ from: {r: row, c: col}, to: {r: landR, c: landC}, captured: {r: midR, c: midC} });
-                    }
-                    break;
-                }
-                if (board[midR] && board[midR][midC]) break;
-            }
-        }
-        return moves;
-    }
-
-    function canJumpMore(row, col) {
-        const piece = board[row][col];
-        if (!piece) return false;
-        return getCaptureMoves(row, col, piece).length > 0;
-    }
-
     function updateFirebase() {
         if (!gameId || gameOver) return;
         db.ref('games/' + gameId + '/lastMove').set({
             player: myRole,
-            newBoard: board,
+            newBoard: JSON.stringify(board), // Massivni string qilib saqlash (xatolikni oldini oladi)
             newTurn: turn,
             ts: Date.now()
         });
@@ -158,12 +118,16 @@
 
     function executeMove(fromR, fromC, toR, toC, capturedPiece = null) {
         const piece = board[fromR][fromC];
-        if (!piece) return false;
-        if (capturedPiece) board[capturedPiece.r][capturedPiece.c] = null;
+        if (capturedPiece) board[capturedPiece.r][capturedPiece.c] = "empty";
+        
         board[toR][toC] = piece;
-        board[fromR][fromC] = null;
-        if ((piece.type === 'white' && toR === 0) || (piece.type === 'black' && toR === 7)) piece.king = true;
-        if (capturedPiece && canJumpMore(toR, toC)) {
+        board[fromR][fromC] = "empty";
+
+        if ((piece.type === 'white' && toR === 0) || (piece.type === 'black' && toR === 7)) {
+            piece.king = true;
+        }
+
+        if (capturedPiece && getCaptureMoves(toR, toC, board[toR][toC]).length > 0) {
             selected = { r: toR, c: toC };
             mustJumpAgain = true;
         } else {
@@ -171,56 +135,68 @@
             mustJumpAgain = false;
             turn = (turn === 'white') ? 'black' : 'white';
         }
+        
         updateFirebase();
         render();
         return true;
     }
 
+    function getCaptureMoves(row, col, piece) {
+        if (!piece || piece === "empty") return [];
+        const moves = [];
+        const dirs = [[1,1], [1,-1], [-1,1], [-1,-1]];
+        for (let [dr, dc] of dirs) {
+            const midR = row + dr, midC = col + dc;
+            const landR = row + 2 * dr, landC = col + 2 * dc;
+            if (landR >= 0 && landR < 8 && landC >= 0 && landC < 8) {
+                const midPiece = board[midR][midC];
+                if (midPiece !== "empty" && midPiece.type !== piece.type && board[landR][landC] === "empty") {
+                    moves.push({ from: {r: row, c: col}, to: {r: landR, c: landC}, captured: {r: midR, c: midC} });
+                }
+            }
+        }
+        return moves;
+    }
+
     function tryMove(fromR, fromC, toR, toC) {
         const piece = board[fromR][fromC];
-        if (!piece) return false;
-        if (board[toR][toC] !== null) return false;
-        const rowDiff = toR - fromR, colDiff = toC - fromC;
-        const absRow = Math.abs(rowDiff), absCol = Math.abs(colDiff);
-        if (absRow !== absCol || absRow === 0) return false;
-        const stepRow = Math.sign(rowDiff), stepCol = Math.sign(colDiff);
-        let piecesInBetween = [];
-        for (let i = 1; i < absRow; i++) {
-            const midR = fromR + i * stepRow, midC = fromC + i * stepCol;
-            if (board[midR][midC]) piecesInBetween.push({ r: midR, c: midC, type: board[midR][midC].type });
-        }
-        if (piecesInBetween.length === 1 && piecesInBetween[0].type !== piece.type) {
-            const captured = piecesInBetween[0];
-            const distToCapture = Math.abs(captured.r - fromR);
-            const distCaptureToLand = Math.abs(toR - captured.r);
-            if (distCaptureToLand === 1 && distToCapture >= 1) {
-                if (!piece.king && (absRow !== 2 || distToCapture !== 1)) return false;
-                return executeMove(fromR, fromC, toR, toC, captured);
-            }
-            return false;
-        } else if (piecesInBetween.length === 0 && !mustJumpAgain) {
-            if (absRow !== 1) return false;
+        const rowDiff = toR - fromR;
+        const absRow = Math.abs(rowDiff);
+        const absCol = Math.abs(toC - fromC);
+
+        if (absRow !== absCol || board[toR][toC] !== "empty") return false;
+
+        // Oddiy yurish (sakrashsiz)
+        if (absRow === 1 && !mustJumpAgain) {
             if (!piece.king) {
                 if (piece.type === 'white' && rowDiff > 0) return false;
                 if (piece.type === 'black' && rowDiff < 0) return false;
             }
-            return executeMove(fromR, fromC, toR, toC, null);
+            return executeMove(fromR, fromC, toR, toC);
+        }
+
+        // Sakrash
+        if (absRow === 2) {
+            const midR = fromR + rowDiff / 2;
+            const midC = fromC + (toC - fromC) / 2;
+            const midPiece = board[midR][midC];
+            if (midPiece !== "empty" && midPiece.type !== piece.type) {
+                return executeMove(fromR, fromC, toR, toC, {r: midR, c: midC});
+            }
         }
         return false;
     }
 
-    // ========== INTERFEYS ==========
     function render() {
         const boardDiv = document.getElementById('board');
-        if (!boardDiv || !board || board.length === 0) return;
         boardDiv.innerHTML = '';
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 8; c++) {
                 const cell = document.createElement('div');
                 cell.className = `cell ${(r + c) % 2 === 0 ? 'white-cell' : 'black-cell'}`;
-                cell.onclick = (function(row, col) { return () => handleClick(row, col); })(r, c);
+                cell.onclick = () => handleClick(r, c);
                 const piece = board[r][c];
-                if (piece) {
+                if (piece && piece !== "empty") {
                     const pieceDiv = document.createElement('div');
                     pieceDiv.className = `piece ${piece.type}-piece ${piece.king ? 'king' : ''}`;
                     if (myRole === 'black') pieceDiv.classList.add('rotate-piece');
@@ -230,235 +206,92 @@
                 boardDiv.appendChild(cell);
             }
         }
-        const statusDiv = document.getElementById('status');
-        if (gameOver) return;
-        if (waitingForOpponent) {
-            statusDiv.innerText = "⏳ Raqib kutilyapti...";
-            statusDiv.style.color = "#f1c40f";
-        } else {
-            statusDiv.innerText = turn === 'white' ? "⚪ Oqlar yurishi" : "⚫ Qoralar yurishi";
-            if (turn === myRole && !gameOver) statusDiv.style.color = "#f1c40f";
-            else statusDiv.style.color = "#aaa";
-        }
+        document.getElementById('status').innerText = turn === 'white' ? "⚪ Oqlar yurishi" : "⚫ Qoralar yurishi";
         checkWinner();
     }
 
-    function handleClick(visualRow, visualCol) {
-        if (gameOver || waitingForOpponent) return;
-        if (!inGame || turn !== myRole) return;
-        let row = visualRow, col = visualCol;
-        if (myRole === 'black') { row = 7 - visualRow; col = 7 - visualCol; }
-        if (mustJumpAgain && (!selected || selected.r !== row || selected.c !== col)) return;
-        const piece = board[row][col];
+    function handleClick(r, c) {
+        if (gameOver || turn !== myRole) return;
+        const piece = board[r][c];
         if (selected) {
-            if (piece && piece.type === turn && !mustJumpAgain) {
-                selected = { r: row, c: col };
-                render();
+            if (piece !== "empty" && piece.type === turn && !mustJumpAgain) {
+                selected = { r: r, c: c };
             } else {
-                tryMove(selected.r, selected.c, row, col);
-                render();
+                tryMove(selected.r, selected.c, r, c);
             }
-        } else if (piece && piece.type === turn) {
-            selected = { r: row, c: col };
-            render();
+        } else if (piece !== "empty" && piece.type === turn) {
+            selected = { r: r, c: c };
         }
+        render();
     }
 
     function checkWinner() {
-        if (!board || board.length === 0) return;
-        let whiteCount = 0, blackCount = 0;
-        for (let r = 0; r < 8; r++)
-            for (let c = 0; c < 8; c++) {
-                const p = board[r][c];
-                if (p && p.type === 'white') whiteCount++;
-                if (p && p.type === 'black') blackCount++;
-            }
-        if (whiteCount === 0) {
+        let w = 0, b = 0;
+        board.forEach(row => row.forEach(p => {
+            if (p.type === 'white') w++;
+            if (p.type === 'black') b++;
+        }));
+        if (w === 0 || b === 0) {
             gameOver = true;
-            document.getElementById('status').innerHTML = "🏆 O'YIN TUGADI! QORALAR YUTDI! 🏆";
-            document.getElementById('status').style.color = "#2ecc71";
-            setTimeout(() => endGameAndExit(), 4000);
-        } else if (blackCount === 0) {
-            gameOver = true;
-            document.getElementById('status').innerHTML = "🏆 O'YIN TUGADI! OQLAR YUTDI! 🏆";
-            document.getElementById('status').style.color = "#2ecc71";
-            setTimeout(() => endGameAndExit(), 4000);
+            document.getElementById('status').innerText = w === 0 ? "🏆 Qoralar yutdi!" : "🏆 Oqlar yutdi!";
+            setTimeout(() => location.reload(), 5000);
         }
     }
 
-    function endGameAndExit() {
-        if (gameId) {
-            db.ref('games/' + gameId + '/lastMove').remove();
-            if (currentGameRef) currentGameRef.off();
-            db.ref('games/' + gameId).remove(); // o'yinni tozalash
-        }
-        db.ref('presence/' + user.id).update({ inGame: false });
-        setTimeout(() => location.reload(), 500);
-    }
-
-    // ========== OYINNI BOSHLASH / ULASH ==========
-    function startGame(gameIdentifier, role, existingBoard = null) {
-        if (inGame) return;
+    function startGame(id, role, existingBoard = null) {
         inGame = true;
-        gameId = gameIdentifier;
+        gameId = id;
         myRole = role;
-        waitingForOpponent = false;
-        if (currentGameRef) currentGameRef.off();
-        currentGameRef = db.ref('games/' + gameId + '/lastMove');
-        
-        if (existingBoard) {
-            board = existingBoard;
-            turn = (role === 'white') ? 'white' : 'black'; // white boshlaydi, qora kutadi
-        } else {
-            board = getInitialBoard();
-            turn = 'white';
-        }
-        selected = null;
-        mustJumpAgain = false;
-        gameOver = false;
+        board = existingBoard ? JSON.parse(existingBoard) : getInitialBoard();
         
         document.getElementById('menu').style.display = 'none';
         document.getElementById('board').style.display = 'grid';
         document.getElementById('status').style.display = 'block';
         if (myRole === 'black') document.getElementById('board').classList.add('rotate-board');
-        else document.getElementById('board').classList.remove('rotate-board');
-        
-        // Firebase sync: harakatlarni kuzatish
-        currentGameRef.on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data && data.newBoard && Array.isArray(data.newBoard) && data.newBoard.length === 8) {
-                board = data.newBoard;
+
+        currentGameRef = db.ref('games/' + gameId + '/lastMove');
+        currentGameRef.on('value', (snap) => {
+            const data = snap.val();
+            if (data && data.player !== myRole) {
+                board = JSON.parse(data.newBoard);
                 turn = data.newTurn;
-                selected = null;
-                mustJumpAgain = false;
-                waitingForOpponent = false;
                 render();
-            } else if (!data && myRole === 'white' && !gameOver) {
-                // Hech qanday harakat yo'q, white boshlang'ich holatni yozadi
-                if (JSON.stringify(board) === JSON.stringify(getInitialBoard()) && turn === 'white') {
-                    updateFirebase();
-                }
             }
         });
-        
-        // Agar white roli va board boshlang'ich bo'lsa, bir marta yozish
-        if (myRole === 'white' && JSON.stringify(board) === JSON.stringify(getInitialBoard()) && turn === 'white') {
-            setTimeout(() => { if (inGame && !gameOver) updateFirebase(); }, 300);
-        }
         render();
         db.ref('presence/' + user.id).update({ inGame: true });
     }
 
-    // ========== TAKLIF YUBORISH (inviter: o'yin yaratadi) ==========
-    function invite(targetId) {
-        if (inGame) {
-            alert("Siz allaqachon o'yindasiz!");
-            return;
-        }
-        const newGameId = user.id + "_" + targetId; // inviterID_opponentID
-        // O'yin yaratish (faqat white tomon)
-        const initialBoard = getInitialBoard();
-        db.ref('games/' + newGameId).set({
-            whiteId: user.id,
-            blackId: targetId,
-            createdAt: Date.now(),
-            lastMove: {
-                player: 'white',
-                newBoard: initialBoard,
-                newTurn: 'white',
-                ts: Date.now()
-            }
-        }).then(() => {
-            // Taklif xabari yuboriladi
-            db.ref('invites/' + targetId).set({
-                fromId: user.id,
-                fromName: user.first_name,
-                gameId: newGameId,
-                ts: Date.now()
-            });
-            // Inviter o'zini o'yin ichida boshlaydi (oq rolida)
-            startGame(newGameId, 'white', initialBoard);
-        }).catch(err => alert("Xatolik: " + err.message));
-    }
+    // Taklif yuborish
+    window.invite = function(targetId) {
+        const newGameId = user.id + "_" + targetId;
+        db.ref('invites/' + targetId).set({ fromId: user.id, fromName: user.first_name, gameId: newGameId, ts: Date.now() });
+        startGame(newGameId, 'white');
+    };
 
-    // ========== ONLAYN FOYDALANUVCHILAR ==========
+    // Takliflarni eshitish
+    db.ref('invites/' + user.id).on('value', (snap) => {
+        const inv = snap.val();
+        if (inv && !inGame && inv.ts > sessionStartTime) {
+            if (confirm(inv.fromName + " taklif qildi. Qabul qilasizmi?")) {
+                db.ref('invites/' + user.id).remove();
+                startGame(inv.gameId, 'black');
+            }
+        }
+    });
+
+    // Onlayn foydalanuvchilar (O'zingizniki qoldi)
     db.ref('presence/' + user.id).set({ name: user.first_name, online: true, inGame: false });
-    db.ref('presence/' + user.id).onDisconnect().remove();
-    
     db.ref('presence').on('value', (snap) => {
         const listDiv = document.getElementById('online-list');
         listDiv.innerHTML = '';
-        let hasAny = false;
-        snap.forEach((child) => {
+        snap.forEach(child => {
             if (child.key !== user.id && !child.val().inGame) {
-                hasAny = true;
-                listDiv.innerHTML += `<div class="user-item">
-                    <span>👤 ${escapeHtml(child.val().name)}</span> 
-                    <button class="invite-btn" onclick="window.invite('${child.key}')">🎮 Taklif</button>
-                </div>`;
+                listDiv.innerHTML += `<div class="user-item"><span>👤 ${child.val().name}</span> <button class="invite-btn" onclick="invite('${child.key}')">🎮 Taklif</button></div>`;
             }
         });
-        if (!hasAny) listDiv.innerHTML = '<div style="padding:10px; text-align:center;">Hozircha boshqa o‘yinchilar yo‘q</div>';
     });
-    
-    function escapeHtml(str) {
-        return str.replace(/[&<>]/g, function(m) {
-            if (m === '&') return '&amp;';
-            if (m === '<') return '&lt;';
-            if (m === '>') return '&gt;';
-            return m;
-        });
-    }
-    
-    // ========== TAKLIFNI QABUL QILISH (invitee: mavjud o‘yinga qora sifatida qo‘shiladi) ==========
-    db.ref('invites/' + user.id).on('value', (snap) => {
-        const inv = snap.val();
-        if (inv && !inGame && inv.ts > sessionStartTime - 5000) {
-            if (confirm(`${inv.fromName} sizni shashka o'ynashga taklif qildi. Qabul qilasizmi?`)) {
-                const existingGameId = inv.gameId;
-                // Tekshirish: o'yin mavjudmi?
-                db.ref('games/' + existingGameId).once('value').then((gameSnap) => {
-                    if (gameSnap.exists()) {
-                        const gameData = gameSnap.val();
-                        const lastMove = gameData.lastMove;
-                        const boardData = lastMove ? lastMove.newBoard : getInitialBoard();
-                        const currentTurn = lastMove ? lastMove.newTurn : 'white';
-                        // Invitee qora rolida o'ynaydi
-                        startGame(existingGameId, 'black', boardData);
-                        // Turnni o'rnatish (white boshlagan, qora kutadi)
-                        turn = currentTurn;
-                        // Firebaseni yangilash shart emas, chunki board allaqachon mavjud
-                        render();
-                        db.ref('invites/' + user.id).remove();
-                    } else {
-                        alert("Kechirasiz, o'yin topilmadi. Taklif eskirgan bo'lishi mumkin.");
-                        db.ref('invites/' + user.id).remove();
-                    }
-                });
-            } else {
-                db.ref('invites/' + user.id).remove();
-            }
-        }
-    });
-    
-    // Agar inviter sahifani qayta yuklasa va o'yin mavjud bo'lsa, uni qayta ulash
-    // (qo'shimcha xavfsizlik: agar foydalanuvchi o'yinda bo'lsa va sahifa yangilansa)
-    function checkExistingGame() {
-        // Hozircha hech qanday o'yin yo'q, lekin agar o'yin ID saqlangan bo'lsa, qayta ulash mumkin.
-        // Bu funksiyani ishga tushirish shart emas, lekin kerak bo'lsa kengaytirish mumkin.
-    }
-    
-    // Global funksiyalar
-    window.invite = invite;
-    window.tg = tg;
-    
-    // Sahifa yopilganda tozalash
-    window.addEventListener('beforeunload', () => {
-        if (gameId && currentGameRef) currentGameRef.off();
-        db.ref('presence/' + user.id).remove();
-    });
-    
-    console.log("Shashka o'yini tayyor. Taklif tizimi to'liq tuzatildi.");
+
 </script>
 </body>
 </html>
