@@ -87,11 +87,9 @@
     let gameId = '';
     let isMyTurn = false;
 
-    // Presence va tozalash
     db.ref('presence/' + user.id).set({ name: user.first_name, online: true });
     db.ref('presence/' + user.id).onDisconnect().remove();
 
-    // Foydalanuvchi tizimga kirganda u bilan bog'liq eski qoldiqlarni tozalash
     function clearOldData() {
         db.ref('invites/' + user.id).remove();
         db.ref('games').once('value', (snap) => {
@@ -187,6 +185,7 @@
     function syncFromFirebase(newBoard, newTurn) {
         board = newBoard;
         turn = newTurn;
+        selected = null; // MUHIM: Tanlangan toshni tozalash, aks holda qulflanadi
         render();
     }
 
@@ -331,7 +330,7 @@
                gameOver = true;
                setTimeout(() => {
                    if(gameId) db.ref('games/' + gameId).remove();
-                   window.location.reload(); // Menuga qaytish
+                   window.location.reload();
                }, 5000);
             }
         }
