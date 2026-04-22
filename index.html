@@ -16,7 +16,6 @@
             margin: 0; font-family: sans-serif; overflow: hidden; color: white;
         }
         
-        /* Menyu Stili */
         #menu { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         #menu h1 { color: #f1c40f; margin-bottom: 30px; }
         .btn { background: #f1c40f; color: black; border: none; padding: 15px 30px; border-radius: 10px; font-weight: bold; font-size: 18px; margin: 10px; cursor: pointer; width: 80%; }
@@ -24,7 +23,6 @@
         .user-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #444; align-items: center; }
         .invite-btn { background: #2ecc71; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
 
-        /* O'yin maydoni */
         #status { font-size: 5vw; margin-bottom: 15px; font-weight: bold; text-transform: uppercase; text-align: center; }
         #board {
             width: 95vw; height: 95vw; max-width: 450px; max-height: 450px;
@@ -57,7 +55,6 @@
 <div id="board" style="display:none;"></div>
 
 <script>
-    // 1. YANGILANGAN FIREBASE SOZLAMALARI
     const firebaseConfig = {
         apiKey: "AIzaSyBCvV83aHz4VXCiUXykAmcxIj3mOCjeKaM",
         authDomain: "shashka-68221.firebaseapp.com",
@@ -71,7 +68,6 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // 2. TELEGRAM VA FOYDALANUVCHI
     const tg = window.Telegram.WebApp;
     tg.expand();
     const user = tg.initDataUnsafe.user || { 
@@ -84,11 +80,9 @@
     let gameId = '';
     let isMyTurn = false;
 
-    // Online mavjudlikni bazaga yozish
     db.ref('presence/' + user.id).set({ name: user.first_name, online: true });
     db.ref('presence/' + user.id).onDisconnect().remove();
 
-    // Online ro'yxatni yangilab turish
     db.ref('presence').on('value', (snap) => {
         const list = document.getElementById('online-list');
         list.innerHTML = '';
@@ -117,7 +111,8 @@
                 myRole = 'black';
                 startGame(gameId);
                 db.ref('invites/' + user.id).remove();
-                db.ref('games/' + gameId).set({ board: null, turn: 'white', start: true });
+                // Qabul qiluvchi o'yinni yaratadi
+                db.ref('games/' + gameId).set({ start: true });
             }
         }
     });
@@ -131,7 +126,6 @@
         }
     });
 
-    // --- SHASHKA MANTIQI ---
     const boardDiv = document.getElementById('board');
     const statusDiv = document.getElementById('status');
     let board = [];
@@ -145,11 +139,17 @@
         document.getElementById('menu').style.display = 'none';
         boardDiv.style.display = 'grid';
         statusDiv.style.display = 'block';
-        init();
         
+        // Oqlar (yaratuvchi) doskani boshlaydi
+        if (myRole === 'white') {
+            init();
+            updateFirebase();
+        }
+
         db.ref('games/' + gameId + '/lastMove').on('value', (snap) => {
-            if(snap.val() && snap.val().player !== myRole) {
-                syncFromFirebase(snap.val().newBoard, snap.val().newTurn);
+            const data = snap.val();
+            if(data && data.player !== myRole) {
+                syncFromFirebase(data.newBoard, data.newTurn);
             }
         });
     }
@@ -161,6 +161,7 @@
     }
 
     function init() {
+        board = [];
         for (let r = 0; r < 8; r++) {
             board[r] = [];
             for (let c = 0; c < 8; c++) {
@@ -182,7 +183,7 @@
                 const cell = document.createElement('div');
                 cell.className = `cell ${(r + c) % 2 === 0 ? 'white-cell' : 'black-cell'}`;
                 cell.onclick = () => handleClick(r, c);
-                if (board[r][c]) {
+                if (board[r] && board[r][c]) {
                     const p = document.createElement('div');
                     p.className = `piece ${board[r][c].type}-piece ${board[r][c].king ? 'king' : ''}`;
                     if (selected && selected.r === r && selected.c === c) p.classList.add('selected');
@@ -192,6 +193,7 @@
             }
         }
         statusDiv.innerText = turn === 'white' ? "Oqlar yurishi" : "Qoralar yurishi";
+        statusDiv.style.color = (turn === myRole) ? "#f1c40f" : "white";
         checkWinner();
     }
 
@@ -251,10 +253,17 @@
             turn = turn === 'white' ? 'black' : 'white';
         }
         
+        updateFirebase();
+        render();
+    }
+
+    function updateFirebase() {
+        if (!gameId) return;
         db.ref('games/' + gameId + '/lastMove').set({
             player: myRole,
             newBoard: board,
-            newTurn: turn
+            newTurn: turn,
+            ts: Date.now()
         });
     }
 
@@ -279,13 +288,15 @@
         let whiteLeft = 0; let blackLeft = 0;
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 8; c++) {
-                if (board[r][c]?.type === 'white') whiteLeft++;
-                if (board[r][c]?.type === 'black') blackLeft++;
+                if (board[r] && board[r][c]?.type === 'white') whiteLeft++;
+                if (board[r] && board[r][c]?.type === 'black') blackLeft++;
             }
         }
         if (whiteLeft === 0 || blackLeft === 0) {
-            statusDiv.innerHTML = "O'YIN TUGADI! " + (whiteLeft === 0 ? "QORALAR" : "OQLAR") + " YUTDI!";
-            gameOver = true;
+            if(board.length > 0) {
+               statusDiv.innerHTML = "O'YIN TUGADI! " + (whiteLeft === 0 ? "QORALAR" : "OQLAR") + " YUTDI!";
+               gameOver = true;
+            }
         }
     }
 </script>
