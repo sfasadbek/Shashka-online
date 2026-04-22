@@ -91,7 +91,7 @@
     let mustJumpAgain = false;
     let gameOver = false;
     let inGame = false;
-    let sessionStartTime = Date.now(); // Faqat yangi o'yinlarni olish uchun
+    let sessionStartTime = Date.now();
 
     db.ref('presence/' + user.id).set({ name: user.first_name, online: true, inGame: false });
     db.ref('presence/' + user.id).onDisconnect().remove();
@@ -122,12 +122,12 @@
 
     db.ref('invites/' + user.id).on('value', (snap) => {
         const val = snap.val();
-        // Faqat o'yin boshlangandan keyin kelgan taklifni qabul qiladi
         if(val && !inGame && val.ts > sessionStartTime) {
             if(confirm(val.fromName + " taklif yubordi. Qabul qilasizmi?")) {
                 gameId = val.fromId + "_" + user.id;
                 myRole = 'black';
                 db.ref('invites/' + user.id).remove();
+                // Qora o'yinchi o'yinni yaratadi
                 db.ref('games/' + gameId).set({ start: true, createdAt: Date.now() });
                 startGame(gameId);
             } else {
@@ -138,7 +138,6 @@
 
     db.ref('games').on('child_added', (snap) => {
         const val = snap.val();
-        // Faqat yangi yaratilgan o'yin bo'lsa kiradi
         if (!inGame && snap.key.startsWith(user.id + "_") && val.createdAt > sessionStartTime) {
             gameId = snap.key;
             myRole = 'white';
@@ -155,12 +154,19 @@
         document.getElementById('board').style.display = 'grid';
         document.getElementById('status').style.display = 'block';
         
-        if (myRole === 'black') document.getElementById('board').classList.add('rotate-board');
-        if (myRole === 'white') init();
+        if (myRole === 'black') {
+            document.getElementById('board').classList.add('rotate-board');
+        }
+        
+        // Oq o'yinchi doskani birinchi bo'lib chizadi va bazaga yuboradi
+        if (myRole === 'white') {
+            init(); 
+        }
 
+        // Bazadagi o'zgarishlarni kuzatish
         db.ref('games/' + id + '/lastMove').on('value', (snap) => {
             const data = snap.val();
-            if(data && data.player !== myRole) {
+            if(data) {
                 board = data.newBoard;
                 turn = data.newTurn;
                 selected = null;
@@ -183,12 +189,13 @@
                 board[r][c] = piece;
             }
         }
-        updateFirebase();
+        updateFirebase(); // Oq o'yinchi boshlang'ich doskani bazaga yuboradi
         render();
     }
 
     function render() {
         const bDiv = document.getElementById('board');
+        if (!bDiv) return;
         bDiv.innerHTML = '';
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 8; c++) {
