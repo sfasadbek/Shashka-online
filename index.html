@@ -27,11 +27,9 @@
         #menu { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         #menu h1 { color: #f1c40f; margin-bottom: 20px; font-weight: 900; }
         
-        /* Tugmalar uchun yangi dizayn */
         .top-btns { position: absolute; top: 20px; width: 90%; display: flex; justify-content: space-between; }
         .circle-btn { width: 50px; height: 50px; font-size: 25px; cursor: pointer; background: #2c2c2c; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 2px solid #f1c40f; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
-        /* Profil va Leaderboard modallari */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 200; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         .modal-content { width: 90%; max-width: 400px; background: #2c2c2c; border-radius: 20px; padding: 25px; text-align: center; border: 2px solid #f1c40f; }
         
@@ -63,14 +61,11 @@
         #winner-msg { font-size: 9vw; font-weight: 900; color: #f1c40f; margin-bottom: 15px; }
     </style>
 </head>
-<body>
-
-<audio id="capture-sound" src="tosh yeyishi.mp3" preload="auto"></audio>
+<body onclick="startLobbyMusic()"> <audio id="capture-sound" src="tosh yeyishi.mp3" preload="auto"></audio>
 <audio id="move-sound" src="oddiy yurish.mp3" preload="auto"></audio>
 <audio id="winner-sound" src="winner.mp3" preload="auto"></audio>
 <audio id="loser-sound" src="loser.mp3" preload="auto"></audio>
-
-<div id="loading-screen">
+<audio id="lobby-music" src="kutish.mp3" preload="auto" loop></audio> <div id="loading-screen">
     <div id="loading-text">YUKLANMOQDA...</div>
     <div class="progress-container"><div class="progress-bar" id="bar"></div></div>
 </div>
@@ -126,6 +121,23 @@
 </div>
 
 <script>
+    // --- YANGI: LOBBY MUSIQA LOGIKASI ---
+    let musicStarted = false;
+    function startLobbyMusic() {
+        if (!musicStarted && !inGame) {
+            const lobbyMusic = document.getElementById('lobby-music');
+            lobbyMusic.play().catch(e => console.log("Musiqa kutilmoqda..."));
+            musicStarted = true;
+        }
+    }
+
+    function stopLobbyMusic() {
+        const lobbyMusic = document.getElementById('lobby-music');
+        lobbyMusic.pause();
+        lobbyMusic.currentTime = 0;
+        musicStarted = false;
+    }
+
     // Ranklar ro'yxati
     const RANKS = [
         { min: 0, name: "Yangi o'yinchi", icon: "🌱" },
@@ -162,7 +174,6 @@
     let myRole = '', gameId = '', board = [], turn = 'white', selected = null, mustJumpAgain = false, gameOver = false, inGame = false, opponentId = '', sessionStartTime = Date.now();
     let moveTimerInterval = null, secondsLeft = 15;
 
-    // --- Statistika va Profil Funksiyalari ---
     function openProfile() {
         db.ref('stats/' + user.id).once('value', (snap) => {
             const data = snap.val() || { wins: 0, losses: 0 };
@@ -171,8 +182,6 @@
             document.getElementById('prof-wins').innerText = data.wins || 0;
             document.getElementById('prof-loss').innerText = data.losses || 0;
             document.getElementById('prof-rank').innerText = rank.icon + " " + rank.name;
-            
-            // Keyingi rank haqida ma'lumot
             const nextRank = RANKS.find(r => r.min > (data.wins || 0));
             if(nextRank) {
                 document.getElementById('next-rank-info').innerText = `Keyingi rank (${nextRank.name}) uchun yana ${nextRank.min - data.wins} ta g'alaba kerak.`;
@@ -193,7 +202,6 @@
         });
     }
 
-    // --- Qolgan barcha kod o'zgarmagan (faqat UI bog'landi) ---
     function startLoading() {
         let width = 0;
         const bar = document.getElementById('bar');
@@ -288,9 +296,9 @@
         }, 1000);
     }
 
-    // --- O'yin logikasi (O'zgarmagan) ---
     function startGame(id, role, oppId, existingBoard = null) {
         inGame = true; gameId = id; myRole = role; opponentId = oppId;
+        stopLobbyMusic(); // O'yin boshlanganda kutish musiqasini to'xtatish
         board = existingBoard ? JSON.parse(existingBoard) : getInitialBoard();
         document.getElementById('menu').style.display = 'none';
         document.getElementById('board').style.display = 'grid';
