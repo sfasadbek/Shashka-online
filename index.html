@@ -43,27 +43,32 @@
             font-size: 18px;
             font-family: sans-serif;
             letter-spacing: 2px;
+            font-weight: 900; /* Qalinlashtirildi */
         }
 
         /* --- ASOSIY CSS QISMI --- */
         * { box-sizing: border-box; touch-action: manipulation; }
         body { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; background: #1a1a1a; margin: 0; font-family: sans-serif; overflow: hidden; color: white; }
         #menu { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-        #menu h1 { color: #f1c40f; margin-bottom: 30px; }
+        #menu h1 { color: #f1c40f; margin-bottom: 30px; font-weight: 900; }
+        #my-name { font-weight: 800; font-size: 1.1em; }
+        #menu h3 { font-weight: 800; }
+        
         #leaderboard-btn { position: absolute; top: 20px; right: 20px; font-size: 30px; cursor: pointer; background: #2c2c2c; padding: 10px; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid #f1c40f; }
         #leaderboard-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 200; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         .leaderboard-content { width: 90%; max-width: 400px; background: #2c2c2c; border-radius: 15px; padding: 20px; max-height: 80vh; overflow-y: auto; }
-        .leaderboard-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #444; font-size: 14px; }
-        .win-text { color: #2ecc71; font-weight: bold; }
-        .loss-text { color: #e74c3c; font-weight: bold; }
-        .btn { background: #f1c40f; color: black; border: none; padding: 15px 30px; border-radius: 10px; font-weight: bold; font-size: 18px; margin: 10px; cursor: pointer; width: 80%; }
-        #online-list { width: 80%; max-height: 200px; overflow-y: auto; background: #2c2c2c; border-radius: 10px; padding: 10px; }
+        .leaderboard-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #444; font-size: 14px; font-weight: 700; }
+        .win-text { color: #2ecc71; font-weight: 900; }
+        .loss-text { color: #e74c3c; font-weight: 900; }
+        
+        .btn { background: #f1c40f; color: black; border: none; padding: 15px 30px; border-radius: 10px; font-weight: 900; font-size: 18px; margin: 10px; cursor: pointer; width: 80%; text-transform: uppercase; }
+        #online-list { width: 80%; max-height: 200px; overflow-y: auto; background: #2c2c2c; border-radius: 10px; padding: 10px; font-weight: 700; }
         .user-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #444; align-items: center; }
-        .invite-btn { background: #2ecc71; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
+        .invite-btn { background: #2ecc71; color: white; border: none; padding: 7px 12px; border-radius: 5px; cursor: pointer; font-weight: 900; }
         
         #status-container { display: flex; flex-direction: column; align-items: center; margin-bottom: 10px; }
-        #status { font-size: 5vw; font-weight: bold; text-transform: uppercase; text-align: center; background: #2c2c2c; padding: 8px 20px; border-radius: 30px; min-width: 200px; }
-        #turn-timer { font-size: 4vw; color: #f1c40f; margin-top: 5px; font-weight: bold; }
+        #status { font-size: 5vw; font-weight: 900; text-transform: uppercase; text-align: center; background: #2c2c2c; padding: 10px 25px; border-radius: 30px; min-width: 220px; border: 2px solid #444; }
+        #turn-timer { font-size: 5vw; color: #f1c40f; margin-top: 5px; font-weight: 900; text-shadow: 0 0 10px rgba(241, 196, 15, 0.5); }
         
         #board { width: 95vw; height: 95vw; max-width: 450px; max-height: 450px; border: 6px solid #3e2723; display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); transition: transform 0.5s; box-shadow: 0 10px 25px rgba(0,0,0,0.5); background-color: #d7ccc8; }
         .rotate-board { transform: rotate(180deg); }
@@ -76,12 +81,12 @@
         .black-piece { background: radial-gradient(circle, #3a3a3a, #1a1a1a); border: 2px solid #333; }
         .selected { transform: scale(1.1); box-shadow: 0 0 15px #ffeb3b; border: 3px solid #ffeb3b; filter: brightness(1.1); }
         .king::after { content: '👑'; font-size: 6vw; font-weight: bold; text-shadow: 1px 1px 1px rgba(0,0,0,0.3); }
-        #resign-btn { margin-top: 20px; background: #e74c3c; color: white; display: none; padding: 12px 25px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; }
+        #resign-btn { margin-top: 20px; background: #e74c3c; color: white; display: none; padding: 12px 25px; border-radius: 12px; border: none; font-weight: 900; cursor: pointer; text-transform: uppercase; }
         
         /* O'yin tugash xabari uchun */
-        #game-over-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 500; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        #winner-msg { font-size: 8vw; font-weight: bold; color: #f1c40f; margin-bottom: 10px; }
-        #exit-timer { font-size: 5vw; color: white; }
+        #game-over-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 500; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        #winner-msg { font-size: 9vw; font-weight: 900; color: #f1c40f; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 2px; }
+        #exit-timer { font-size: 6vw; color: white; font-weight: 800; }
     </style>
 </head>
 <body>
@@ -109,7 +114,7 @@
 </div>
 
 <div id="leaderboard-modal">
-    <h2>🏆 Eng yaxshilar</h2>
+    <h2 style="font-weight: 900;">🏆 Eng yaxshilar</h2>
     <div class="leaderboard-content" id="leaderboard-list">Yuklanmoqda...</div>
     <button class="btn" style="width: 200px;" onclick="toggleLeaderboard(false)">Yopish</button>
 </div>
@@ -128,6 +133,7 @@
 </div>
 
 <script>
+    // --- DIQQAT: JAVASCRIPT LOGIKASI O'ZGARTIRILMADI ---
     function startLoading() {
         let width = 0;
         const bar = document.getElementById('bar');
