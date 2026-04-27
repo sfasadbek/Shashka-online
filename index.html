@@ -77,6 +77,8 @@
 </head>
 <body>
 
+<audio id="capture-sound" src="tosh yeyishi.mp3" preload="auto"></audio>
+
 <div id="loading-screen">
     <div id="loading-text">YUKLANMOQDA...</div>
     <div class="progress-container">
@@ -115,15 +117,14 @@
                 document.getElementById('loading-screen').style.display = 'none';
                 document.getElementById('menu').style.display = 'flex';
             } else {
-                width += 2; // Yuklanish tezligi
+                width += 2;
                 bar.style.width = width + '%';
             }
-        }, 30); // Har 30ms da yangilanadi
+        }, 30);
     }
-    // Sahifa yuklanganda ishga tushadi
     window.onload = startLoading;
 
-    // --- FIREBASE VA O'YIN LOGIKASI (O'ZGARMAGAN) ---
+    // --- FIREBASE SOZLAMALARI ---
     const firebaseConfig = {
         apiKey: "AIzaSyBCvV83aHz4VXCiUXykAmcxIj3mOCjeKaM",
         authDomain: "shashka-68221.firebaseapp.com",
@@ -189,7 +190,8 @@
             player: myRole,
             newBoard: JSON.stringify(board),
             newTurn: turn,
-            ts: Date.now()
+            ts: Date.now(),
+            hadCapture: !!window.lastMoveCaptured // Urish sodir bo'lganini belgilash
         });
     }
 
@@ -220,9 +222,15 @@
         const boardEl = document.getElementById('board');
         if (myRole === 'black') boardEl.classList.add('rotate-board');
         else boardEl.classList.remove('rotate-board');
+        
         db.ref('games/' + gameId + '/lastMove').on('value', (snap) => {
             const data = snap.val();
-            if (data && data.player !== myRole) { board = JSON.parse(data.newBoard); turn = data.newTurn; render(); }
+            if (data && data.player !== myRole) { 
+                board = JSON.parse(data.newBoard); 
+                turn = data.newTurn; 
+                if (data.hadCapture) document.getElementById('capture-sound').play().catch(() => {});
+                render(); 
+            }
         });
         db.ref('games/' + gameId + '/event').on('value', (snap) => {
             const ev = snap.val();
@@ -301,7 +309,12 @@
 
     function executeMove(fromR, fromC, toR, toC, capturedPiece = null) {
         const piece = board[fromR][fromC];
-        if (capturedPiece) board[capturedPiece.r][capturedPiece.c] = "empty";
+        window.lastMoveCaptured = false;
+        if (capturedPiece) {
+            board[capturedPiece.r][capturedPiece.c] = "empty";
+            document.getElementById('capture-sound').play().catch(() => {});
+            window.lastMoveCaptured = true;
+        }
         board[toR][toC] = piece;
         board[fromR][fromC] = "empty";
         if ((piece.type === 'white' && toR === 0) || (piece.type === 'black' && toR === 7)) piece.king = true;
