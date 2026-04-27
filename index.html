@@ -34,7 +34,7 @@
         .progress-bar {
             width: 0%;
             height: 100%;
-            background: #2ecc71; /* Yashil rang */
+            background: #2ecc71; 
             box-shadow: 0 0 15px #2ecc71;
             transition: width 0.3s ease;
         }
@@ -78,6 +78,9 @@
 <body>
 
 <audio id="capture-sound" src="tosh yeyishi.mp3" preload="auto"></audio>
+<audio id="move-sound" src="oddiy yurish.mp3" preload="auto"></audio>
+<audio id="winner-sound" src="winner.mp3" preload="auto"></audio>
+<audio id="loser-sound" src="loser.mp3" preload="auto"></audio>
 
 <div id="loading-screen">
     <div id="loading-text">YUKLANMOQDA...</div>
@@ -143,6 +146,16 @@
 
     let myRole = '', gameId = '', board = [], turn = 'white', selected = null, mustJumpAgain = false, gameOver = false, inGame = false, opponentId = '', sessionStartTime = Date.now();
 
+    // --- OVOZ FUNKSIYALARI ---
+    function playSound(id) {
+        const sound = document.getElementById(id);
+        if (sound) {
+            sound.pause();
+            sound.currentTime = 0;
+            sound.play().catch(() => {});
+        }
+    }
+
     function getInitialBoard() {
         const newBoard = [];
         for (let r = 0; r < 8; r++) {
@@ -184,14 +197,14 @@
         }
     }
 
-    function updateFirebase() {
+    function updateFirebase(hadCapture = false) {
         if (!gameId || gameOver) return;
         db.ref('games/' + gameId + '/lastMove').set({
             player: myRole,
             newBoard: JSON.stringify(board),
             newTurn: turn,
             ts: Date.now(),
-            hadCapture: !!window.lastMoveCaptured
+            hadCapture: hadCapture
         });
     }
 
@@ -205,18 +218,18 @@
     function finishGame(won, message) {
         if (gameOver) return;
         gameOver = true;
-        alert(message);
-        updateStats(won);
-        if (gameId) db.ref('games/' + gameId).remove();
-        db.ref('presence/' + user.id).update({ inGame: false });
-        setTimeout(() => location.reload(), 500);
-    }
+        
+        // G'alaba yoki mag'lubiyat ovozi
+        if (won) playSound('winner-sound');
+        else playSound('loser-sound');
 
-    function playCaptureSound() {
-        const sound = document.getElementById('capture-sound');
-        sound.pause(); // Avvalgi ovozni to'xtatish
-        sound.currentTime = 0; // Vaqtni boshiga qaytarish (ketma-ket urish uchun muhim)
-        sound.play().catch(() => {}); // O'ynash
+        setTimeout(() => {
+            alert(message);
+            updateStats(won);
+            if (gameId) db.ref('games/' + gameId).remove();
+            db.ref('presence/' + user.id).update({ inGame: false });
+            setTimeout(() => location.reload(), 500);
+        }, 300);
     }
 
     function startGame(id, role, oppId, existingBoard = null) {
@@ -235,7 +248,8 @@
             if (data && data.player !== myRole) { 
                 board = JSON.parse(data.newBoard); 
                 turn = data.newTurn; 
-                if (data.hadCapture) playCaptureSound(); // Raqib urganda ovoz chiqishi
+                if (data.hadCapture) playSound('capture-sound');
+                else playSound('move-sound'); // Raqib oddiy yurganida ovoz
                 render(); 
             }
         });
@@ -316,15 +330,21 @@
 
     function executeMove(fromR, fromC, toR, toC, capturedPiece = null) {
         const piece = board[fromR][fromC];
-        window.lastMoveCaptured = false;
+        let hadCapture = false;
+
         if (capturedPiece) {
             board[capturedPiece.r][capturedPiece.c] = "empty";
-            playCaptureSound(); // O'zingiz urganda ovoz chiqishi
-            window.lastMoveCaptured = true;
+            playSound('capture-sound');
+            hadCapture = true;
+        } else {
+            playSound('move-sound');
         }
+
         board[toR][toC] = piece;
         board[fromR][fromC] = "empty";
+
         if ((piece.type === 'white' && toR === 0) || (piece.type === 'black' && toR === 7)) piece.king = true;
+
         if (capturedPiece && getCaptureMoves(toR, toC, board[toR][toC]).length > 0) {
             selected = { r: toR, c: toC };
             mustJumpAgain = true;
@@ -333,7 +353,8 @@
             mustJumpAgain = false;
             turn = (turn === 'white') ? 'black' : 'white';
         }
-        updateFirebase();
+        
+        updateFirebase(hadCapture);
         render();
         return true;
     }
