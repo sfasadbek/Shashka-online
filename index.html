@@ -61,11 +61,13 @@
         #winner-msg { font-size: 9vw; font-weight: 900; color: #f1c40f; margin-bottom: 15px; }
     </style>
 </head>
-<body onclick="startLobbyMusic()"> <audio id="capture-sound" src="tosh yeyishi.mp3" preload="auto"></audio>
+<body onclick="handleInteraction()"> <audio id="capture-sound" src="tosh yeyishi.mp3" preload="auto"></audio>
 <audio id="move-sound" src="oddiy yurish.mp3" preload="auto"></audio>
 <audio id="winner-sound" src="winner.mp3" preload="auto"></audio>
 <audio id="loser-sound" src="loser.mp3" preload="auto"></audio>
-<audio id="lobby-music" src="kutish.mp3" preload="auto" loop></audio> <div id="loading-screen">
+<audio id="lobby-music" src="kutish.mp3" preload="auto" loop></audio> 
+
+<div id="loading-screen">
     <div id="loading-text">YUKLANMOQDA...</div>
     <div class="progress-container"><div class="progress-bar" id="bar"></div></div>
 </div>
@@ -75,7 +77,7 @@
         <div class="circle-btn" onclick="openProfile()">👤</div>
         <div class="circle-btn" onclick="toggleLeaderboard(true)">🏆</div>
     </div>
-    <h1>♟️ SHASHKA </h1>
+    <h1>♟️ SHASHKA ONLINE</h1>
     <p id="my-name" style="font-weight: 800;">Yuklanmoqda...</p>
     <div id="my-rank-short" class="rank-tag">Yangi o'yinchi</div>
     
@@ -121,14 +123,34 @@
 </div>
 
 <script>
-    // --- YANGI: LOBBY MUSIQA LOGIKASI ---
+    // --- TELEGRAM FULL SCREEN SOZLAMALARI ---
+    const tg = window.Telegram.WebApp;
+    tg.expand(); // Ilovani to'liq ekranga yoyish
+    
+    // Pastga tortganda yopilib ketishni o'chirish (Haqiqiy Full Screen uchun)
+    if (tg.isVerticalSwipesEnabled) {
+        tg.disableVerticalSwipes();
+    }
+
+    // Brauzer darajasida Full Screen funksiyasi
+    function toggleFullScreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                console.log(`Error: ${err.message}`);
+            });
+        }
+    }
+
     let musicStarted = false;
-    function startLobbyMusic() {
+    function handleInteraction() {
+        // Musiqani boshlash
         if (!musicStarted && !inGame) {
             const lobbyMusic = document.getElementById('lobby-music');
             lobbyMusic.play().catch(e => console.log("Musiqa kutilmoqda..."));
             musicStarted = true;
         }
+        // To'liq ekranga o'tishga urinish
+        toggleFullScreen();
     }
 
     function stopLobbyMusic() {
@@ -155,7 +177,7 @@
         return currentRank;
     }
 
-    // --- Firebase & Telegram ---
+    // --- Firebase Konfiguratsiyasi ---
     const firebaseConfig = {
         apiKey: "AIzaSyBCvV83aHz4VXCiUXykAmcxIj3mOCjeKaM",
         authDomain: "shashka-68221.firebaseapp.com",
@@ -167,8 +189,7 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    const tg = window.Telegram.WebApp;
-    tg.expand();
+    
     const user = tg.initDataUnsafe.user || { first_name: "Mehmon_" + Math.floor(Math.random()*10000), id: "guest_" + Date.now() };
 
     let myRole = '', gameId = '', board = [], turn = 'white', selected = null, mustJumpAgain = false, gameOver = false, inGame = false, opponentId = '', sessionStartTime = Date.now();
@@ -298,7 +319,7 @@
 
     function startGame(id, role, oppId, existingBoard = null) {
         inGame = true; gameId = id; myRole = role; opponentId = oppId;
-        stopLobbyMusic(); // O'yin boshlanganda kutish musiqasini to'xtatish
+        stopLobbyMusic(); 
         board = existingBoard ? JSON.parse(existingBoard) : getInitialBoard();
         document.getElementById('menu').style.display = 'none';
         document.getElementById('board').style.display = 'grid';
