@@ -60,7 +60,11 @@
         #online-list { width: 80%; max-height: 200px; overflow-y: auto; background: #2c2c2c; border-radius: 10px; padding: 10px; }
         .user-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #444; align-items: center; }
         .invite-btn { background: #2ecc71; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
-        #status { font-size: 5vw; margin-bottom: 15px; font-weight: bold; text-transform: uppercase; text-align: center; background: #2c2c2c; padding: 8px 20px; border-radius: 30px; display: inline-block; width: auto; min-width: 200px; }
+        
+        #status-container { display: flex; flex-direction: column; align-items: center; margin-bottom: 10px; }
+        #status { font-size: 5vw; font-weight: bold; text-transform: uppercase; text-align: center; background: #2c2c2c; padding: 8px 20px; border-radius: 30px; min-width: 200px; }
+        #turn-timer { font-size: 4vw; color: #f1c40f; margin-top: 5px; font-weight: bold; }
+        
         #board { width: 95vw; height: 95vw; max-width: 450px; max-height: 450px; border: 6px solid #3e2723; display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); transition: transform 0.5s; box-shadow: 0 10px 25px rgba(0,0,0,0.5); background-color: #d7ccc8; }
         .rotate-board { transform: rotate(180deg); }
         .cell { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; cursor: pointer; }
@@ -72,7 +76,12 @@
         .black-piece { background: radial-gradient(circle, #3a3a3a, #1a1a1a); border: 2px solid #333; }
         .selected { transform: scale(1.1); box-shadow: 0 0 15px #ffeb3b; border: 3px solid #ffeb3b; filter: brightness(1.1); }
         .king::after { content: '👑'; font-size: 6vw; font-weight: bold; text-shadow: 1px 1px 1px rgba(0,0,0,0.3); }
-        #resign-btn { margin-top: 30px; background: #e74c3c; color: white; display: none; padding: 12px 25px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(231, 76, 60, 0.3); }
+        #resign-btn { margin-top: 20px; background: #e74c3c; color: white; display: none; padding: 12px 25px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; }
+        
+        /* O'yin tugash xabari uchun */
+        #game-over-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 500; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        #winner-msg { font-size: 8vw; font-weight: bold; color: #f1c40f; margin-bottom: 10px; }
+        #exit-timer { font-size: 5vw; color: white; }
     </style>
 </head>
 <body>
@@ -105,12 +114,20 @@
     <button class="btn" style="width: 200px;" onclick="toggleLeaderboard(false)">Yopish</button>
 </div>
 
-<div id="status" style="display:none;">Oqlar yurishi</div>
+<div id="status-container" style="display:none;">
+    <div id="status">Oqlar yurishi</div>
+    <div id="turn-timer">Vaqt: 15</div>
+</div>
+
 <div id="board" style="display:none;"></div>
 <button id="resign-btn" onclick="resignGame()">🏳️ Taslim bo'lish</button>
 
+<div id="game-over-overlay">
+    <div id="winner-msg"></div>
+    <div id="exit-timer">Menyuga qaytish: 10</div>
+</div>
+
 <script>
-    // --- LOADING ANIMATSIYASI ---
     function startLoading() {
         let width = 0;
         const bar = document.getElementById('bar');
@@ -127,7 +144,6 @@
     }
     window.onload = startLoading;
 
-    // --- FIREBASE SOZLAMALARI ---
     const firebaseConfig = {
         apiKey: "AIzaSyBCvV83aHz4VXCiUXykAmcxIj3mOCjeKaM",
         authDomain: "shashka-68221.firebaseapp.com",
@@ -145,8 +161,9 @@
     document.getElementById('my-name').innerHTML = "👋 Salom, " + user.first_name;
 
     let myRole = '', gameId = '', board = [], turn = 'white', selected = null, mustJumpAgain = false, gameOver = false, inGame = false, opponentId = '', sessionStartTime = Date.now();
+    let moveTimerInterval = null;
+    let secondsLeft = 15;
 
-    // --- OVOZ FUNKSIYALARI ---
     function playSound(id) {
         const sound = document.getElementById(id);
         if (sound) {
@@ -154,6 +171,25 @@
             sound.currentTime = 0;
             sound.play().catch(() => {});
         }
+    }
+
+    function startMoveTimer() {
+        clearInterval(moveTimerInterval);
+        secondsLeft = 15;
+        document.getElementById('turn-timer').innerText = "Vaqt: " + secondsLeft;
+        
+        moveTimerInterval = setInterval(() => {
+            if (gameOver) { clearInterval(moveTimerInterval); return; }
+            secondsLeft--;
+            document.getElementById('turn-timer').innerText = "Vaqt: " + secondsLeft;
+            
+            if (secondsLeft <= 0) {
+                clearInterval(moveTimerInterval);
+                if (turn === myRole) {
+                    finishGame(false, "Vaqtingiz tugadi!");
+                }
+            }
+        }, 1000);
     }
 
     function getInitialBoard() {
@@ -218,18 +254,31 @@
     function finishGame(won, message) {
         if (gameOver) return;
         gameOver = true;
+        clearInterval(moveTimerInterval);
         
-        // G'alaba yoki mag'lubiyat ovozi
+        const overlay = document.getElementById('game-over-overlay');
+        const winnerMsg = document.getElementById('winner-msg');
+        const exitTimer = document.getElementById('exit-timer');
+        
+        winnerMsg.innerText = message;
+        overlay.style.display = 'flex';
+        
         if (won) playSound('winner-sound');
         else playSound('loser-sound');
 
-        setTimeout(() => {
-            alert(message);
-            updateStats(won);
-            if (gameId) db.ref('games/' + gameId).remove();
-            db.ref('presence/' + user.id).update({ inGame: false });
-            setTimeout(() => location.reload(), 500);
-        }, 300);
+        updateStats(won);
+        if (gameId) db.ref('games/' + gameId).remove();
+        db.ref('presence/' + user.id).update({ inGame: false });
+
+        let timeLeft = 10;
+        const exitInt = setInterval(() => {
+            timeLeft--;
+            exitTimer.innerText = "Menyuga qaytish: " + timeLeft;
+            if (timeLeft <= 0) {
+                clearInterval(exitInt);
+                location.reload();
+            }
+        }, 1000);
     }
 
     function startGame(id, role, oppId, existingBoard = null) {
@@ -237,7 +286,7 @@
         board = existingBoard ? JSON.parse(existingBoard) : getInitialBoard();
         document.getElementById('menu').style.display = 'none';
         document.getElementById('board').style.display = 'grid';
-        document.getElementById('status').style.display = 'block';
+        document.getElementById('status-container').style.display = 'flex';
         document.getElementById('resign-btn').style.display = 'block';
         const boardEl = document.getElementById('board');
         if (myRole === 'black') boardEl.classList.add('rotate-board');
@@ -249,18 +298,20 @@
                 board = JSON.parse(data.newBoard); 
                 turn = data.newTurn; 
                 if (data.hadCapture) playSound('capture-sound');
-                else playSound('move-sound'); // Raqib oddiy yurganida ovoz
+                else playSound('move-sound');
                 render(); 
+                startMoveTimer();
             }
         });
         db.ref('games/' + gameId + '/event').on('value', (snap) => {
             const ev = snap.val();
-            if (ev && ev.by !== user.id && ev.type === 'resign') finishGame(true, "Raqib taslim bo'ldi! Siz g'olibsiz.");
+            if (ev && ev.by !== user.id && ev.type === 'resign') finishGame(true, "Raqib taslim bo'ldi!");
         });
         db.ref('presence/' + opponentId + '/online').on('value', (snap) => {
-            if (inGame && !gameOver && snap.val() === false) finishGame(true, "Raqib aloqadan chiqdi! Siz g'olibsiz.");
+            if (inGame && !gameOver && snap.val() === false) finishGame(true, "Raqib aloqadan chiqdi!");
         });
         render();
+        startMoveTimer();
         db.ref('presence/' + user.id).update({ inGame: true });
     }
 
@@ -352,6 +403,7 @@
             selected = null;
             mustJumpAgain = false;
             turn = (turn === 'white') ? 'black' : 'white';
+            startMoveTimer();
         }
         
         updateFirebase(hadCapture);
@@ -391,7 +443,7 @@
         board.forEach(row => row.forEach(p => { if (p.type === 'white') w++; if (p.type === 'black') b++; }));
         if ((w === 0 || b === 0) && !gameOver && inGame) {
             const winner = w === 0 ? 'black' : 'white';
-            finishGame(myRole === winner, winner === 'black' ? "Qoralar yutdi!" : "Oqlar yutdi!");
+            finishGame(myRole === winner, winner === 'white' ? "Oqlar yutdi!" : "Qoralar yutdi!");
         }
     }
 
