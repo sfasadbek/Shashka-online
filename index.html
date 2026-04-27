@@ -191,7 +191,7 @@
             newBoard: JSON.stringify(board),
             newTurn: turn,
             ts: Date.now(),
-            hadCapture: !!window.lastMoveCaptured // Urish sodir bo'lganini belgilash
+            hadCapture: !!window.lastMoveCaptured
         });
     }
 
@@ -212,6 +212,13 @@
         setTimeout(() => location.reload(), 500);
     }
 
+    function playCaptureSound() {
+        const sound = document.getElementById('capture-sound');
+        sound.pause(); // Avvalgi ovozni to'xtatish
+        sound.currentTime = 0; // Vaqtni boshiga qaytarish (ketma-ket urish uchun muhim)
+        sound.play().catch(() => {}); // O'ynash
+    }
+
     function startGame(id, role, oppId, existingBoard = null) {
         inGame = true; gameId = id; myRole = role; opponentId = oppId;
         board = existingBoard ? JSON.parse(existingBoard) : getInitialBoard();
@@ -228,7 +235,7 @@
             if (data && data.player !== myRole) { 
                 board = JSON.parse(data.newBoard); 
                 turn = data.newTurn; 
-                if (data.hadCapture) document.getElementById('capture-sound').play().catch(() => {});
+                if (data.hadCapture) playCaptureSound(); // Raqib urganda ovoz chiqishi
                 render(); 
             }
         });
@@ -312,7 +319,7 @@
         window.lastMoveCaptured = false;
         if (capturedPiece) {
             board[capturedPiece.r][capturedPiece.c] = "empty";
-            document.getElementById('capture-sound').play().catch(() => {});
+            playCaptureSound(); // O'zingiz urganda ovoz chiqishi
             window.lastMoveCaptured = true;
         }
         board[toR][toC] = piece;
