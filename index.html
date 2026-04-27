@@ -47,10 +47,16 @@
         #turn-timer { font-size: 5vw; color: #f1c40f; margin-top: 5px; font-weight: 900; }
         
         #board { width: 95vw; height: 95vw; max-width: 450px; max-height: 450px; border: 6px solid #3e2723; display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); transition: transform 0.5s; background-color: #d7ccc8; }
+        
+        /* Qora o'yinchi uchun doskani va ichidagi toshlarni 180 darajaga aylantirish */
+        .rotate-board { transform: rotate(180deg); }
+        .rotate-board .piece { transform: rotate(180deg); }
+        .rotate-board .selected { transform: scale(1.1) rotate(180deg); }
+
         .cell { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
         .black-cell { background-color: #5d4037; }
         .white-cell { background-color: #d7ccc8; }
-        .piece { width: 82%; height: 82%; border-radius: 50%; position: relative; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.4); display: flex; justify-content: center; align-items: center; }
+        .piece { width: 82%; height: 82%; border-radius: 50%; position: relative; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.4); display: flex; justify-content: center; align-items: center; transition: transform 0.2s; }
         .white-piece { background: radial-gradient(circle, #ffffff, #e0e0e0); border: 2px solid #aaa; }
         .black-piece { background: radial-gradient(circle, #3a3a3a, #1a1a1a); border: 2px solid #333; }
         .selected { transform: scale(1.1); box-shadow: 0 0 15px #ffeb3b; border: 3px solid #ffeb3b; }
@@ -61,7 +67,8 @@
         #winner-msg { font-size: 9vw; font-weight: 900; color: #f1c40f; margin-bottom: 15px; }
     </style>
 </head>
-<body onclick="handleInteraction()"> <audio id="capture-sound" src="tosh yeyishi.mp3" preload="auto"></audio>
+<body onclick="handleInteraction()"> 
+<audio id="capture-sound" src="tosh yeyishi.mp3" preload="auto"></audio>
 <audio id="move-sound" src="oddiy yurish.mp3" preload="auto"></audio>
 <audio id="winner-sound" src="winner.mp3" preload="auto"></audio>
 <audio id="loser-sound" src="loser.mp3" preload="auto"></audio>
@@ -123,33 +130,23 @@
 </div>
 
 <script>
-    // --- TELEGRAM FULL SCREEN SOZLAMALARI ---
     const tg = window.Telegram.WebApp;
-    tg.expand(); // Ilovani to'liq ekranga yoyish
-    
-    // Pastga tortganda yopilib ketishni o'chirish (Haqiqiy Full Screen uchun)
-    if (tg.isVerticalSwipesEnabled) {
-        tg.disableVerticalSwipes();
-    }
+    tg.expand();
+    if (tg.isVerticalSwipesEnabled) tg.disableVerticalSwipes();
 
-    // Brauzer darajasida Full Screen funksiyasi
     function toggleFullScreen() {
         if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(err => {
-                console.log(`Error: ${err.message}`);
-            });
+            document.documentElement.requestFullscreen().catch(err => {});
         }
     }
 
     let musicStarted = false;
     function handleInteraction() {
-        // Musiqani boshlash
         if (!musicStarted && !inGame) {
             const lobbyMusic = document.getElementById('lobby-music');
-            lobbyMusic.play().catch(e => console.log("Musiqa kutilmoqda..."));
+            lobbyMusic.play().catch(() => {});
             musicStarted = true;
         }
-        // To'liq ekranga o'tishga urinish
         toggleFullScreen();
     }
 
@@ -160,7 +157,6 @@
         musicStarted = false;
     }
 
-    // Ranklar ro'yxati
     const RANKS = [
         { min: 0, name: "Yangi o'yinchi", icon: "🌱" },
         { min: 10, name: "Havaskor", icon: "🥉" },
@@ -171,13 +167,10 @@
 
     function getRank(wins) {
         let currentRank = RANKS[0];
-        for (let r of RANKS) {
-            if (wins >= r.min) currentRank = r;
-        }
+        for (let r of RANKS) if (wins >= r.min) currentRank = r;
         return currentRank;
     }
 
-    // --- Firebase Konfiguratsiyasi ---
     const firebaseConfig = {
         apiKey: "AIzaSyBCvV83aHz4VXCiUXykAmcxIj3mOCjeKaM",
         authDomain: "shashka-68221.firebaseapp.com",
@@ -189,7 +182,6 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    
     const user = tg.initDataUnsafe.user || { first_name: "Mehmon_" + Math.floor(Math.random()*10000), id: "guest_" + Date.now() };
 
     let myRole = '', gameId = '', board = [], turn = 'white', selected = null, mustJumpAgain = false, gameOver = false, inGame = false, opponentId = '', sessionStartTime = Date.now();
@@ -204,11 +196,7 @@
             document.getElementById('prof-loss').innerText = data.losses || 0;
             document.getElementById('prof-rank').innerText = rank.icon + " " + rank.name;
             const nextRank = RANKS.find(r => r.min > (data.wins || 0));
-            if(nextRank) {
-                document.getElementById('next-rank-info').innerText = `Keyingi rank (${nextRank.name}) uchun yana ${nextRank.min - data.wins} ta g'alaba kerak.`;
-            } else {
-                document.getElementById('next-rank-info').innerText = "Siz eng yuqori darajadasiz!";
-            }
+            document.getElementById('next-rank-info').innerText = nextRank ? `Keyingi rank (${nextRank.name}) uchun yana ${nextRank.min - data.wins} ta g'alaba kerak.` : "Siz eng yuqori darajadasiz!";
             document.getElementById('profile-modal').style.display = 'flex';
         });
     }
@@ -325,7 +313,15 @@
         document.getElementById('board').style.display = 'grid';
         document.getElementById('status-container').style.display = 'flex';
         document.getElementById('resign-btn').style.display = 'block';
-        if (myRole === 'black') document.getElementById('board').classList.add('rotate-board');
+        
+        // --- DOSKANI AYLANTRISH LOGIKASI ---
+        const boardDiv = document.getElementById('board');
+        if (myRole === 'black') {
+            boardDiv.classList.add('rotate-board');
+        } else {
+            boardDiv.classList.remove('rotate-board');
+        }
+
         db.ref('games/' + gameId + '/lastMove').on('value', (snap) => {
             const data = snap.val();
             if (data && data.player !== myRole) { 
@@ -367,9 +363,9 @@
                     if (gameOver || turn !== myRole) return;
                     const piece = board[r][c];
                     if (selected) {
-                        if (piece !== "empty" && piece.type === turn && !mustJumpAgain) selected = { r: r, c: c };
+                        if (piece !== "empty" && piece.type === turn && !mustJumpAgain) selected = { r, c };
                         else tryMove(selected.r, selected.c, r, c);
-                    } else if (piece !== "empty" && piece.type === turn) selected = { r: r, c: c };
+                    } else if (piece !== "empty" && piece.type === turn) selected = { r, c };
                     render();
                 };
                 const piece = board[r][c];
@@ -397,7 +393,7 @@
         const dirs = [[1,1], [1,-1], [-1,1], [-1,-1]];
         for (let [dr, dc] of dirs) {
             if (piece.king) {
-                let r = row + dr; let c = col + dc; let foundEnemy = null;
+                let r = row + dr, c = col + dc, foundEnemy = null;
                 while (r >= 0 && r < 8 && c >= 0 && c < 8) {
                     const curr = board[r][c];
                     if (curr !== "empty") {
