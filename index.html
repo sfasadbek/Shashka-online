@@ -16,49 +16,26 @@
             background: #1a1a1a; display: flex; flex-direction: column;
             justify-content: center; align-items: center; z-index: 1000;
         }
-        /* Konteyner balandligini biroz oshirdik, figura sig'ishi uchun */
-        .progress-container { 
-            width: 70%; 
-            height: 12px; 
-            background: #333; 
-            border-radius: 10px; 
-            position: relative; 
-            margin-top: 20px;
-        }
-        /* Chiziq harakati */
-        .progress-bar { 
-            width: 0%; 
-            height: 100%; 
-            background: #2ecc71; 
-            box-shadow: 0 0 15px #2ecc71; 
-            transition: width 0.3s ease; 
-            position: relative;
-            border-radius: 10px;
-        }
-        /* Shashka donasi figurasi chiziq oxirida */
-        .progress-bar::after {
-            content: '♟️';
-            position: absolute;
-            right: -15px; /* Chiziqning uchida turishi uchun */
-            top: -15px;   /* Chiziqdan biroz yuqorida ko'rinishi uchun */
-            font-size: 24px;
-            filter: drop-shadow(0 0 5px #2ecc71);
-        }
-        
+        .progress-container { width: 70%; height: 12px; background: #333; border-radius: 10px; position: relative; margin-top: 20px; }
+        .progress-bar { width: 0%; height: 100%; background: #2ecc71; box-shadow: 0 0 15px #2ecc71; transition: width 0.3s ease; position: relative; border-radius: 10px; }
+        .progress-bar::after { content: '♟️'; position: absolute; right: -15px; top: -15px; font-size: 24px; filter: drop-shadow(0 0 5px #2ecc71); }
         #loading-text { color: white; font-size: 18px; font-family: sans-serif; letter-spacing: 2px; font-weight: 900; }
+
+        /* --- ISM KIRITISH MODALI --- */
+        #name-setup-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; z-index: 1100; flex-direction: column; align-items: center; justify-content: center; }
+        .input-field { background: #2c2c2c; border: 2px solid #f1c40f; color: white; padding: 15px; border-radius: 10px; width: 80%; font-size: 18px; text-align: center; margin-bottom: 20px; outline: none; }
 
         /* --- ASOSIY CSS QISMI --- */
         * { box-sizing: border-box; touch-action: manipulation; }
         body { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; background: #1a1a1a; margin: 0; font-family: sans-serif; overflow: hidden; color: white; }
-        
         #menu { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         #menu h1 { color: #f1c40f; margin-bottom: 20px; font-weight: 900; }
-        
         .top-btns { position: absolute; top: 20px; width: 90%; display: flex; justify-content: space-between; }
         .circle-btn { width: 50px; height: 50px; font-size: 25px; cursor: pointer; background: #2c2c2c; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 2px solid #f1c40f; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 200; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-        .modal-content { width: 90%; max-width: 400px; background: #2c2c2c; border-radius: 20px; padding: 25px; text-align: center; border: 2px solid #f1c40f; }
+        .modal-content { width: 90%; max-width: 400px; background: #2c2c2c; border-radius: 20px; padding: 25px; text-align: center; border: 2px solid #f1c40f; position: relative; }
+        .edit-name-btn { position: absolute; right: 20px; top: 65px; cursor: pointer; font-size: 20px; }
         
         .rank-tag { background: #f1c40f; color: black; padding: 5px 15px; border-radius: 20px; font-weight: 900; font-size: 14px; margin-top: 10px; display: inline-block; }
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
@@ -74,11 +51,9 @@
         #turn-timer { font-size: 5vw; color: #f1c40f; margin-top: 5px; font-weight: 900; }
         
         #board { width: 95vw; height: 95vw; max-width: 450px; max-height: 450px; border: 6px solid #3e2723; display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); transition: transform 0.5s; background-color: #d7ccc8; }
-        
         .rotate-board { transform: rotate(180deg); }
         .rotate-board .piece { transform: rotate(180deg); }
         .rotate-board .selected { transform: scale(1.1) rotate(180deg); }
-
         .cell { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
         .black-cell { background-color: #5d4037; }
         .white-cell { background-color: #d7ccc8; }
@@ -88,23 +63,21 @@
         .selected { transform: scale(1.1); box-shadow: 0 0 15px #ffeb3b; border: 3px solid #ffeb3b; }
         .king::after { content: '👑'; font-size: 6vw; }
         #resign-btn { margin-top: 20px; background: #e74c3c; color: white; display: none; padding: 12px 25px; border-radius: 12px; border: none; font-weight: 900; cursor: pointer; }
-        
         #game-over-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 500; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
         #winner-msg { font-size: 9vw; font-weight: 900; color: #f1c40f; margin-bottom: 15px; }
     </style>
 </head>
 <body onclick="handleInteraction()"> 
-<audio id="capture-sound" src="tosh yeyishi.mp3" preload="auto"></audio>
-<audio id="move-sound" src="oddiy yurish.mp3" preload="auto"></audio>
-<audio id="winner-sound" src="winner.mp3" preload="auto"></audio>
-<audio id="loser-sound" src="loser.mp3" preload="auto"></audio>
-<audio id="lobby-music" src="kutish.mp3" preload="auto" loop></audio> 
 
 <div id="loading-screen">
     <div id="loading-text">YUKLANMOQDA...</div>
-    <div class="progress-container">
-        <div class="progress-bar" id="bar"></div>
-    </div>
+    <div class="progress-container"><div class="progress-bar" id="bar"></div></div>
+</div>
+
+<div id="name-setup-modal">
+    <h2 style="color:#f1c40f; font-weight:900;">ISMINGIZNI KIRITING</h2>
+    <input type="text" id="user-name-input" class="input-field" placeholder="Nikneym..." maxlength="15">
+    <button class="btn" onclick="saveUserName()">SAQLASH</button>
 </div>
 
 <div id="menu" style="display: none;">
@@ -113,7 +86,7 @@
         <div class="circle-btn" onclick="toggleLeaderboard(true)">🏆</div>
     </div>
     <h1>♟️ SHASHKA ONLINE</h1>
-    <p id="my-name" style="font-weight: 800;">Yuklanmoqda...</p>
+    <p id="my-name-display" style="font-weight: 800;">...</p>
     <div id="my-rank-short" class="rank-tag">Yangi o'yinchi</div>
     
     <h3 style="margin-top: 20px;">🟢 Onlayn o'yinchilar:</h3>
@@ -124,6 +97,7 @@
 
 <div id="profile-modal" class="modal">
     <div class="modal-content">
+        <span class="edit-name-btn" onclick="editName()">✏️</span>
         <h2 style="margin:0; color:#f1c40f;">PROFIL</h2>
         <h3 id="prof-name" style="margin: 10px 0;">Ism</h3>
         <div id="prof-rank" class="rank-tag">Rank</div>
@@ -148,42 +122,98 @@
     <div id="status">Oqlar yurishi</div>
     <div id="turn-timer">Vaqt: 15</div>
 </div>
-
 <div id="board" style="display:none;"></div>
 <button id="resign-btn" onclick="resignGame()">🏳️ Taslim bo'lish</button>
-
 <div id="game-over-overlay">
     <div id="winner-msg"></div>
     <div id="exit-timer" style="color: white; font-weight: 800;">Menyuga qaytish: 10</div>
 </div>
 
+<audio id="capture-sound" src="tosh yeyishi.mp3" preload="auto"></audio>
+<audio id="move-sound" src="oddiy yurish.mp3" preload="auto"></audio>
+<audio id="winner-sound" src="winner.mp3" preload="auto"></audio>
+<audio id="loser-sound" src="loser.mp3" preload="auto"></audio>
+<audio id="lobby-music" src="kutish.mp3" preload="auto" loop></audio> 
+
 <script>
     const tg = window.Telegram.WebApp;
     tg.expand();
-    if (tg.isVerticalSwipesEnabled) tg.disableVerticalSwipes();
 
-    function toggleFullScreen() {
-        if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(err => {});
+    const firebaseConfig = {
+        apiKey: "AIzaSyBCvV83aHz4VXCiUXykAmcxIj3mOCjeKaM",
+        authDomain: "shashka-68221.firebaseapp.com",
+        databaseURL: "https://shashka-68221-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "shashka-68221",
+        storageBucket: "shashka-68221.firebasestorage.app",
+        messagingSenderId: "1097688111504",
+        appId: "1:1097688111504:web:e53a6b98195760972ebb15"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // ID yaratish yoki mavjudini olish
+    let userId = localStorage.getItem('shashka_userid') || "u" + Date.now();
+    localStorage.setItem('shashka_userid', userId);
+
+    let currentName = localStorage.getItem('shashka_username') || "";
+
+    function saveUserName() {
+        const input = document.getElementById('user-name-input');
+        const name = input.value.trim();
+        if (name.length >= 3) {
+            currentName = name;
+            localStorage.setItem('shashka_username', name);
+            document.getElementById('name-setup-modal').style.display = 'none';
+            document.getElementById('menu').style.display = 'flex';
+            document.getElementById('my-name-display').innerText = "👋 Salom, " + currentName;
+            updatePresence();
+        } else {
+            alert("Ism kamida 3 ta harf bo'lsin!");
         }
     }
 
-    let musicStarted = false;
-    function handleInteraction() {
-        if (!musicStarted && !inGame) {
-            const lobbyMusic = document.getElementById('lobby-music');
-            lobbyMusic.play().catch(() => {});
-            musicStarted = true;
+    function editName() {
+        const newName = prompt("Yangi ismni kiriting:", currentName);
+        if (newName && newName.trim().length >= 3) {
+            currentName = newName.trim();
+            localStorage.setItem('shashka_username', currentName);
+            document.getElementById('my-name-display').innerText = "👋 Salom, " + currentName;
+            document.getElementById('prof-name').innerText = currentName;
+            updatePresence();
+            // Bazada ham yangilash
+            db.ref('stats/' + userId).update({ name: currentName });
         }
-        toggleFullScreen();
     }
 
-    function stopLobbyMusic() {
-        const lobbyMusic = document.getElementById('lobby-music');
-        lobbyMusic.pause();
-        lobbyMusic.currentTime = 0;
-        musicStarted = false;
+    function startLoading() {
+        let width = 0;
+        const bar = document.getElementById('bar');
+        const interval = setInterval(() => {
+            if (width >= 100) {
+                clearInterval(interval);
+                document.getElementById('loading-screen').style.display = 'none';
+                if (!currentName) {
+                    document.getElementById('name-setup-modal').style.display = 'flex';
+                } else {
+                    document.getElementById('menu').style.display = 'flex';
+                    document.getElementById('my-name-display').innerText = "👋 Salom, " + currentName;
+                    updatePresence();
+                }
+                updateMyRankInMenu();
+            } else { width += 1; bar.style.width = width + '%'; }
+        }, 30);
     }
+    window.onload = startLoading;
+
+    // Presence funksiyasini yangilangan ism bilan chaqirish
+    function updatePresence() {
+        const myPres = db.ref('presence/' + userId);
+        myPres.set({ name: currentName, online: true, inGame: false });
+        myPres.onDisconnect().update({ online: false, inGame: false });
+    }
+
+    // --- Qolgan barcha o'yin mantiqlari (Board, Firebase, Stats) o'zgarishsiz qoladi ---
+    // Faqat 'user.id' va 'user.first_name' o'rniga 'userId' va 'currentName' ishlatiladi.
 
     const RANKS = [
         { min: 0, name: "Yangi o'yinchi", icon: "🌱" },
@@ -199,27 +229,14 @@
         return currentRank;
     }
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyBCvV83aHz4VXCiUXykAmcxIj3mOCjeKaM",
-        authDomain: "shashka-68221.firebaseapp.com",
-        databaseURL: "https://shashka-68221-default-rtdb.europe-west1.firebasedatabase.app",
-        projectId: "shashka-68221",
-        storageBucket: "shashka-68221.firebasestorage.app",
-        messagingSenderId: "1097688111504",
-        appId: "1:1097688111504:web:e53a6b98195760972ebb15"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const user = tg.initDataUnsafe.user || { first_name: "Mehmon_" + Math.floor(Math.random()*10000), id: "guest_" + Date.now() };
-
     let myRole = '', gameId = '', board = [], turn = 'white', selected = null, mustJumpAgain = false, gameOver = false, inGame = false, opponentId = '', sessionStartTime = Date.now();
     let moveTimerInterval = null, secondsLeft = 15;
 
     function openProfile() {
-        db.ref('stats/' + user.id).once('value', (snap) => {
+        db.ref('stats/' + userId).once('value', (snap) => {
             const data = snap.val() || { wins: 0, losses: 0 };
             const rank = getRank(data.wins || 0);
-            document.getElementById('prof-name').innerText = user.first_name;
+            document.getElementById('prof-name').innerText = currentName;
             document.getElementById('prof-wins').innerText = data.wins || 0;
             document.getElementById('prof-loss').innerText = data.losses || 0;
             document.getElementById('prof-rank').innerText = rank.icon + " " + rank.name;
@@ -232,29 +249,12 @@
     function closeProfile() { document.getElementById('profile-modal').style.display = 'none'; }
 
     function updateMyRankInMenu() {
-        db.ref('stats/' + user.id).once('value', (snap) => {
+        db.ref('stats/' + userId).once('value', (snap) => {
             const wins = (snap.val() && snap.val().wins) ? snap.val().wins : 0;
             const rank = getRank(wins);
             document.getElementById('my-rank-short').innerText = rank.icon + " " + rank.name;
         });
     }
-
-    function startLoading() {
-        let width = 0;
-        const bar = document.getElementById('bar');
-        const interval = setInterval(() => {
-            if (width >= 100) {
-                clearInterval(interval);
-                document.getElementById('loading-screen').style.display = 'none';
-                document.getElementById('menu').style.display = 'flex';
-                updateMyRankInMenu();
-            } else { 
-                width += 1; // Tezlikni biroz sekinlashtirdim, figura yaxshi ko'rinishi uchun
-                bar.style.width = width + '%'; 
-            }
-        }, 50);
-    }
-    window.onload = startLoading;
 
     function playSound(id) {
         const sound = document.getElementById(id);
@@ -272,12 +272,9 @@
             if (secondsLeft <= 0) {
                 clearInterval(moveTimerInterval);
                 if (turn === myRole) {
-                    selected = null;
-                    mustJumpAgain = false;
+                    selected = null; mustJumpAgain = false;
                     turn = (turn === 'white') ? 'black' : 'white';
-                    updateFirebase(false);
-                    render();
-                    startMoveTimer();
+                    updateFirebase(false); render(); startMoveTimer();
                 }
             }
         }, 1000);
@@ -299,11 +296,11 @@
     }
 
     function updateStats(won) {
-        db.ref('stats/' + user.id).transaction((current) => {
-            if (current === null) return { name: user.first_name, wins: won ? 1 : 0, losses: won ? 0 : 1 };
+        db.ref('stats/' + userId).transaction((current) => {
+            if (current === null) return { name: currentName, wins: won ? 1 : 0, losses: won ? 0 : 1 };
             if (won) current.wins = (current.wins || 0) + 1;
             else current.losses = (current.losses || 0) + 1;
-            current.name = user.first_name;
+            current.name = currentName;
             return current;
         });
     }
@@ -334,7 +331,7 @@
         if (won) playSound('winner-sound'); else playSound('loser-sound');
         updateStats(won);
         if (gameId) db.ref('games/' + gameId).remove();
-        db.ref('presence/' + user.id).update({ inGame: false });
+        db.ref('presence/' + userId).update({ inGame: false });
         let timeLeft = 10;
         const exitInt = setInterval(() => {
             timeLeft--;
@@ -351,13 +348,9 @@
         document.getElementById('board').style.display = 'grid';
         document.getElementById('status-container').style.display = 'flex';
         document.getElementById('resign-btn').style.display = 'block';
-        
         const boardDiv = document.getElementById('board');
-        if (myRole === 'black') {
-            boardDiv.classList.add('rotate-board');
-        } else {
-            boardDiv.classList.remove('rotate-board');
-        }
+        if (myRole === 'black') boardDiv.classList.add('rotate-board');
+        else boardDiv.classList.remove('rotate-board');
 
         db.ref('games/' + gameId + '/lastMove').on('value', (snap) => {
             const data = snap.val();
@@ -369,10 +362,10 @@
         });
         db.ref('games/' + gameId + '/event').on('value', (snap) => {
             const ev = snap.val();
-            if (ev && ev.by !== user.id && ev.type === 'resign') finishGame(true, "Raqib taslim bo'ldi!");
+            if (ev && ev.by !== userId && ev.type === 'resign') finishGame(true, "Raqib taslim bo'ldi!");
         });
         render(); startMoveTimer();
-        db.ref('presence/' + user.id).update({ inGame: true });
+        db.ref('presence/' + userId).update({ inGame: true });
     }
 
     function updateFirebase(hadCapture = false) {
@@ -384,7 +377,7 @@
 
     function resignGame() {
         if (confirm("Taslim bo'lasizmi?")) {
-            db.ref('games/' + gameId + '/event').set({ type: 'resign', by: user.id });
+            db.ref('games/' + gameId + '/event').set({ type: 'resign', by: userId });
             finishGame(false, "Siz taslim bo'ldingiz!");
         }
     }
@@ -445,7 +438,7 @@
                 if (landR >= 0 && landR < 8 && landC >= 0 && landC < 8) {
                     const mid = board[row+dr][col+dc];
                     if (mid !== "empty" && mid.type !== piece.type && board[landR][landC] === "empty")
-                        moves.push({ from: {r: row, c: col}, to: {r, landR, c: landC}, captured: {r: row+dr, c: col+dc} });
+                        moves.push({ from: {r: row, c: col}, to: {r: landR, c: landC}, captured: {r: row+dr, c: col+dc} });
                 }
             }
         }
@@ -459,7 +452,6 @@
         const dr = rD/absR, dc = cD/absR;
         let way = [];
         for (let i = 1; i < absR; i++) if (board[fR+i*dr][fC+i*dc] !== "empty") way.push({r: fR+i*dr, c: fC+i*dc, type: board[fR+i*dr][fC+i*dc].type});
-        
         if (way.length === 0 && !mustJumpAgain) {
             if (piece.king || (piece.type === 'white' && rD < 0) || (piece.type === 'black' && rD > 0)) return executeMove(fR, fC, tR, tC);
         } else if (way.length === 1 && way[0].type !== piece.type) return executeMove(fR, fC, tR, tC, way[0]);
@@ -477,33 +469,38 @@
     }
 
     window.invite = function(id) {
-        const gid = user.id + "_" + id;
-        db.ref('invites/' + id).set({ fromId: user.id, fromName: user.first_name, gameId: gid, ts: Date.now() });
+        const gid = userId + "_" + id;
+        db.ref('invites/' + id).set({ fromId: userId, fromName: currentName, gameId: gid, ts: Date.now() });
         startGame(gid, 'white', id);
     };
 
-    db.ref('invites/' + user.id).on('value', (snap) => {
+    db.ref('invites/' + userId).on('value', (snap) => {
         const inv = snap.val();
         if (inv && !inGame && inv.ts > sessionStartTime) {
             if (confirm(inv.fromName + " taklif qildi. Qabul qilasizmi?")) {
-                db.ref('invites/' + user.id).remove();
+                db.ref('invites/' + userId).remove();
                 startGame(inv.gameId, 'black', inv.fromId);
             }
         }
     });
 
-    const myPres = db.ref('presence/' + user.id);
-    myPres.set({ name: user.first_name, online: true, inGame: false });
-    myPres.onDisconnect().update({ online: false, inGame: false });
     db.ref('presence').on('value', (snap) => {
         const list = document.getElementById('online-list');
         list.innerHTML = '';
         snap.forEach(c => {
-            if (c.key !== user.id && c.val().online && !c.val().inGame)
+            if (c.key !== userId && c.val().online && !c.val().inGame)
                 list.innerHTML += `<div class="user-item"><span>👤 ${c.val().name}</span> <button class="invite-btn" onclick="invite('${c.key}')">🎮 Taklif</button></div>`;
         });
     });
-    document.getElementById('my-name').innerText = "👋 Salom, " + user.first_name;
+
+    let musicStarted = false;
+    function handleInteraction() {
+        if (!musicStarted && !inGame) {
+            const lobbyMusic = document.getElementById('lobby-music');
+            lobbyMusic.play().catch(() => {});
+            musicStarted = true;
+        }
+    }
 </script>
 </body>
 </html>
