@@ -9,7 +9,43 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
     <style>
-        /* CSS qismi o'zgarishsiz qoldi */
+        /* --- LOADING PROGRESS BAR CSS --- */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .progress-container {
+            width: 70%;
+            height: 10px;
+            background: #333;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: #2ecc71; /* Yashil rang */
+            box-shadow: 0 0 15px #2ecc71;
+            transition: width 0.3s ease;
+        }
+        #loading-text {
+            color: white;
+            font-size: 18px;
+            font-family: sans-serif;
+            letter-spacing: 2px;
+        }
+
+        /* --- ASOSIY CSS QISMI --- */
         * { box-sizing: border-box; touch-action: manipulation; }
         body { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; background: #1a1a1a; margin: 0; font-family: sans-serif; overflow: hidden; color: white; }
         #menu { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
@@ -41,7 +77,14 @@
 </head>
 <body>
 
-<div id="menu">
+<div id="loading-screen">
+    <div id="loading-text">YUKLANMOQDA...</div>
+    <div class="progress-container">
+        <div class="progress-bar" id="bar"></div>
+    </div>
+</div>
+
+<div id="menu" style="display: none;">
     <div id="leaderboard-btn" onclick="toggleLeaderboard(true)">🏆</div>
     <h1>♟️ SHASHKA ONLINE</h1>
     <p id="my-name">Yuklanmoqda...</p>
@@ -62,7 +105,25 @@
 <button id="resign-btn" onclick="resignGame()">🏳️ Taslim bo'lish</button>
 
 <script>
-    // Firebase va boshlang'ich sozlamalar o'zgarishsiz qoladi
+    // --- LOADING ANIMATSIYASI ---
+    function startLoading() {
+        let width = 0;
+        const bar = document.getElementById('bar');
+        const interval = setInterval(() => {
+            if (width >= 100) {
+                clearInterval(interval);
+                document.getElementById('loading-screen').style.display = 'none';
+                document.getElementById('menu').style.display = 'flex';
+            } else {
+                width += 2; // Yuklanish tezligi
+                bar.style.width = width + '%';
+            }
+        }, 30); // Har 30ms da yangilanadi
+    }
+    // Sahifa yuklanganda ishga tushadi
+    window.onload = startLoading;
+
+    // --- FIREBASE VA O'YIN LOGIKASI (O'ZGARMAGAN) ---
     const firebaseConfig = {
         apiKey: "AIzaSyBCvV83aHz4VXCiUXykAmcxIj3mOCjeKaM",
         authDomain: "shashka-68221.firebaseapp.com",
@@ -96,7 +157,6 @@
         return newBoard;
     }
 
-    // Statistika, Leaderboard va Firebase yangilash funksiyalari o'zgarishsiz qoladi
     function updateStats(won) {
         db.ref('stats/' + user.id).transaction((current) => {
             if (current === null) return { name: user.first_name, wins: won ? 1 : 0, losses: won ? 0 : 1 };
@@ -175,33 +235,27 @@
         db.ref('presence/' + user.id).update({ inGame: true });
     }
 
-    // --- QIROL UCHUN YANGILANGAN MANTIQ ---
-
     function getCaptureMoves(row, col, piece) {
         if (!piece || piece === "empty") return [];
         const moves = [];
         const dirs = [[1,1], [1,-1], [-1,1], [-1,-1]];
-
         for (let [dr, dc] of dirs) {
             if (piece.king) {
-                // Qirol uchun uzoq masofali urish
                 let r = row + dr;
                 let c = col + dc;
                 let foundEnemy = null;
                 while (r >= 0 && r < 8 && c >= 0 && c < 8) {
                     const current = board[r][c];
                     if (current !== "empty") {
-                        if (current.type === piece.type) break; // O'zinikini ura olmaydi
-                        if (foundEnemy) break; // Ketma-ket ikkita figurani ura olmaydi
+                        if (current.type === piece.type) break;
+                        if (foundEnemy) break;
                         foundEnemy = {r, c};
                     } else if (foundEnemy) {
-                        // Raqibdan keyingi bo'sh kataklar - urish mumkin bo'lgan joylar
                         moves.push({ from: {r: row, c: col}, to: {r, c}, captured: {r: foundEnemy.r, c: foundEnemy.c} });
                     }
                     r += dr; c += dc;
                 }
             } else {
-                // Oddiy figura uchun urish
                 const midR = row + dr, midC = col + dc;
                 const landR = row + 2 * dr, landC = col + 2 * dc;
                 if (landR >= 0 && landR < 8 && landC >= 0 && landC < 8) {
@@ -221,10 +275,7 @@
         const colDiff = toC - fromC;
         const absRow = Math.abs(rowDiff);
         const absCol = Math.abs(colDiff);
-
         if (absRow !== absCol || board[toR][toC] !== "empty") return false;
-
-        // Yo'lda biron nima borligini tekshirish
         const dr = rowDiff / absRow;
         const dc = colDiff / absCol;
         let piecesInWay = [];
@@ -233,16 +284,13 @@
             let c = fromC + i * dc;
             if (board[r][c] !== "empty") piecesInWay.push({r, c, type: board[r][c].type});
         }
-
         if (piecesInWay.length === 0 && !mustJumpAgain) {
-            // Oddiy yurish (urmasdan)
             if (piece.king) return executeMove(fromR, fromC, toR, toC);
             if (absRow === 1) {
                 if (piece.type === 'white' && rowDiff < 0) return executeMove(fromR, fromC, toR, toC);
                 if (piece.type === 'black' && rowDiff > 0) return executeMove(fromR, fromC, toR, toC);
             }
         } else if (piecesInWay.length === 1) {
-            // Urish holati
             const enemy = piecesInWay[0];
             if (enemy.type !== piece.type) {
                 if (piece.king || absRow === 2) return executeMove(fromR, fromC, toR, toC, {r: enemy.r, c: enemy.c});
@@ -257,8 +305,6 @@
         board[toR][toC] = piece;
         board[fromR][fromC] = "empty";
         if ((piece.type === 'white' && toR === 0) || (piece.type === 'black' && toR === 7)) piece.king = true;
-        
-        // Yana urish imkoniyati borligini tekshirish
         if (capturedPiece && getCaptureMoves(toR, toC, board[toR][toC]).length > 0) {
             selected = { r: toR, c: toC };
             mustJumpAgain = true;
@@ -272,7 +318,6 @@
         return true;
     }
 
-    // Render va boshqa qismlar o'zgarishsiz qoladi
     function render() {
         const boardDiv = document.getElementById('board');
         boardDiv.innerHTML = '';
