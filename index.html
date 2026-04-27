@@ -240,7 +240,15 @@
             document.getElementById('turn-timer').innerText = "Vaqt: " + secondsLeft;
             if (secondsLeft <= 0) {
                 clearInterval(moveTimerInterval);
-                if (turn === myRole) finishGame(false, "Vaqtingiz tugadi!");
+                if (turn === myRole) {
+                    // Vaqt tugaganda shunchaki navbatni almashtiramiz
+                    selected = null;
+                    mustJumpAgain = false;
+                    turn = (turn === 'white') ? 'black' : 'white';
+                    updateFirebase(false); // Raqibga navbat o'tganini xabar qilish
+                    render();
+                    startMoveTimer(); // Yangi navbat uchun taymerni boshlash
+                }
             }
         }, 1000);
     }
