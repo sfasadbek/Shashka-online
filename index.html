@@ -16,8 +16,35 @@
             background: #1a1a1a; display: flex; flex-direction: column;
             justify-content: center; align-items: center; z-index: 1000;
         }
-        .progress-container { width: 70%; height: 10px; background: #333; border-radius: 5px; overflow: hidden; margin-top: 20px; }
-        .progress-bar { width: 0%; height: 100%; background: #2ecc71; box-shadow: 0 0 15px #2ecc71; transition: width 0.3s ease; }
+        /* Konteyner balandligini biroz oshirdik, figura sig'ishi uchun */
+        .progress-container { 
+            width: 70%; 
+            height: 12px; 
+            background: #333; 
+            border-radius: 10px; 
+            position: relative; 
+            margin-top: 20px;
+        }
+        /* Chiziq harakati */
+        .progress-bar { 
+            width: 0%; 
+            height: 100%; 
+            background: #2ecc71; 
+            box-shadow: 0 0 15px #2ecc71; 
+            transition: width 0.3s ease; 
+            position: relative;
+            border-radius: 10px;
+        }
+        /* Shashka donasi figurasi chiziq oxirida */
+        .progress-bar::after {
+            content: '♟️';
+            position: absolute;
+            right: -15px; /* Chiziqning uchida turishi uchun */
+            top: -15px;   /* Chiziqdan biroz yuqorida ko'rinishi uchun */
+            font-size: 24px;
+            filter: drop-shadow(0 0 5px #2ecc71);
+        }
+        
         #loading-text { color: white; font-size: 18px; font-family: sans-serif; letter-spacing: 2px; font-weight: 900; }
 
         /* --- ASOSIY CSS QISMI --- */
@@ -48,7 +75,6 @@
         
         #board { width: 95vw; height: 95vw; max-width: 450px; max-height: 450px; border: 6px solid #3e2723; display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); transition: transform 0.5s; background-color: #d7ccc8; }
         
-        /* Qora o'yinchi uchun doskani va ichidagi toshlarni 180 darajaga aylantirish */
         .rotate-board { transform: rotate(180deg); }
         .rotate-board .piece { transform: rotate(180deg); }
         .rotate-board .selected { transform: scale(1.1) rotate(180deg); }
@@ -76,7 +102,9 @@
 
 <div id="loading-screen">
     <div id="loading-text">YUKLANMOQDA...</div>
-    <div class="progress-container"><div class="progress-bar" id="bar"></div></div>
+    <div class="progress-container">
+        <div class="progress-bar" id="bar"></div>
+    </div>
 </div>
 
 <div id="menu" style="display: none;">
@@ -220,8 +248,11 @@
                 document.getElementById('loading-screen').style.display = 'none';
                 document.getElementById('menu').style.display = 'flex';
                 updateMyRankInMenu();
-            } else { width += 2; bar.style.width = width + '%'; }
-        }, 30);
+            } else { 
+                width += 1; // Tezlikni biroz sekinlashtirdim, figura yaxshi ko'rinishi uchun
+                bar.style.width = width + '%'; 
+            }
+        }, 50);
     }
     window.onload = startLoading;
 
@@ -241,13 +272,12 @@
             if (secondsLeft <= 0) {
                 clearInterval(moveTimerInterval);
                 if (turn === myRole) {
-                    // Vaqt tugaganda shunchaki navbatni almashtiramiz
                     selected = null;
                     mustJumpAgain = false;
                     turn = (turn === 'white') ? 'black' : 'white';
-                    updateFirebase(false); // Raqibga navbat o'tganini xabar qilish
+                    updateFirebase(false);
                     render();
-                    startMoveTimer(); // Yangi navbat uchun taymerni boshlash
+                    startMoveTimer();
                 }
             }
         }, 1000);
@@ -322,7 +352,6 @@
         document.getElementById('status-container').style.display = 'flex';
         document.getElementById('resign-btn').style.display = 'block';
         
-        // --- DOSKANI AYLANTRISH LOGIKASI ---
         const boardDiv = document.getElementById('board');
         if (myRole === 'black') {
             boardDiv.classList.add('rotate-board');
@@ -416,7 +445,7 @@
                 if (landR >= 0 && landR < 8 && landC >= 0 && landC < 8) {
                     const mid = board[row+dr][col+dc];
                     if (mid !== "empty" && mid.type !== piece.type && board[landR][landC] === "empty")
-                        moves.push({ from: {r: row, c: col}, to: {r: landR, c: landC}, captured: {r: row+dr, c: col+dc} });
+                        moves.push({ from: {r: row, c: col}, to: {r, landR, c: landC}, captured: {r: row+dr, c: col+dc} });
                 }
             }
         }
