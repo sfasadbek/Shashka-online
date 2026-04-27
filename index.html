@@ -151,11 +151,21 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // ID yaratish yoki mavjudini olish
-    let userId = localStorage.getItem('shashka_userid') || "u" + Date.now();
-    localStorage.setItem('shashka_userid', userId);
+    // --- TELEGRAM VA APK TEKSHIRUVI ---
+    let userId, currentName;
 
-    let currentName = localStorage.getItem('shashka_username') || "";
+    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+        // Telegramdan kirilgan
+        userId = tg.initDataUnsafe.user.id.toString();
+        currentName = tg.initDataUnsafe.user.first_name;
+        localStorage.setItem('shashka_userid', userId);
+        localStorage.setItem('shashka_username', currentName);
+    } else {
+        // APK yoki Brauzerdan kirilgan
+        userId = localStorage.getItem('shashka_userid') || "u" + Date.now();
+        localStorage.setItem('shashka_userid', userId);
+        currentName = localStorage.getItem('shashka_username') || "";
+    }
 
     function saveUserName() {
         const input = document.getElementById('user-name-input');
@@ -167,6 +177,8 @@
             document.getElementById('menu').style.display = 'flex';
             document.getElementById('my-name-display').innerText = "👋 Salom, " + currentName;
             updatePresence();
+            // Statisikada ismni yangilash
+            db.ref('stats/' + userId).update({ name: currentName });
         } else {
             alert("Ism kamida 3 ta harf bo'lsin!");
         }
@@ -180,7 +192,6 @@
             document.getElementById('my-name-display').innerText = "👋 Salom, " + currentName;
             document.getElementById('prof-name').innerText = currentName;
             updatePresence();
-            // Bazada ham yangilash
             db.ref('stats/' + userId).update({ name: currentName });
         }
     }
@@ -192,6 +203,8 @@
             if (width >= 100) {
                 clearInterval(interval);
                 document.getElementById('loading-screen').style.display = 'none';
+                
+                // Agar ism bo'lmasa (APK holatida) ism so'rash
                 if (!currentName) {
                     document.getElementById('name-setup-modal').style.display = 'flex';
                 } else {
@@ -201,20 +214,18 @@
                 }
                 updateMyRankInMenu();
             } else { width += 1; bar.style.width = width + '%'; }
-        }, 30);
+        }, 20);
     }
     window.onload = startLoading;
 
-    // Presence funksiyasini yangilangan ism bilan chaqirish
     function updatePresence() {
+        if (!userId || !currentName) return;
         const myPres = db.ref('presence/' + userId);
         myPres.set({ name: currentName, online: true, inGame: false });
         myPres.onDisconnect().update({ online: false, inGame: false });
     }
 
-    // --- Qolgan barcha o'yin mantiqlari (Board, Firebase, Stats) o'zgarishsiz qoladi ---
-    // Faqat 'user.id' va 'user.first_name' o'rniga 'userId' va 'currentName' ishlatiladi.
-
+    // --- O'YIN LOGIKASI ---
     const RANKS = [
         { min: 0, name: "Yangi o'yinchi", icon: "🌱" },
         { min: 10, name: "Havaskor", icon: "🥉" },
@@ -409,12 +420,6 @@
             }
         }
         document.getElementById('status').innerText = turn === 'white' ? "⚪ Oqlar yurishi" : "⚫ Qoralar yurishi";
-        let w = 0, b = 0;
-        board.forEach(row => row.forEach(p => { if (p.type === 'white') w++; if (p.type === 'black') b++; }));
-        if ((w === 0 || b === 0) && !gameOver && inGame) {
-            const winner = w === 0 ? 'black' : 'white';
-            finishGame(myRole === winner, winner === 'white' ? "Oqlar yutdi!" : "Qoralar yutdi!");
-        }
     }
 
     function getCaptureMoves(row, col, piece) {
@@ -492,6 +497,13 @@
                 list.innerHTML += `<div class="user-item"><span>👤 ${c.val().name}</span> <button class="invite-btn" onclick="invite('${c.key}')">🎮 Taklif</button></div>`;
         });
     });
+
+    function stopLobbyMusic() {
+        const lobbyMusic = document.getElementById('lobby-music');
+        lobbyMusic.pause();
+        lobbyMusic.currentTime = 0;
+        musicStarted = false;
+    }
 
     let musicStarted = false;
     function handleInteraction() {
