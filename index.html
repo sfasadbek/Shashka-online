@@ -123,7 +123,7 @@
     <h3 id="online-players-title" style="margin-top: 20px;">🟢 Onlayn o'yinchilar:</h3>
     <div id="online-list">Hozircha hech kim yo'q...</div>
     <br>
-    <button id="exit-btn" class="btn" onclick="tg.close()">Chiqish</button>
+    <button id="exit-btn" class="btn" onclick="closeTelegramApp()">Chiqish</button>
 </div>
 
 <div id="profile-modal" class="modal">
@@ -201,6 +201,13 @@
 <script>
     const tg = window.Telegram.WebApp;
     tg.expand();
+
+    // Chiqish muammosini hal qiluvchi funksiya
+    function closeTelegramApp() {
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.close();
+        }
+    }
 
     const ADMIN_LOGIN = "admin";
     const ADMIN_PASSWORD = "12345"; 
