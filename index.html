@@ -99,9 +99,9 @@
 
 <div id="lang-setup-modal">
     <h2 style="color:#f1c40f; font-weight:900;">TILNI TANLANG / SELECT LANGUAGE / ВЫБЕРИТЕ ЯЗЫК</h2>
-    <button class="btn" onclick="setLanguage('uz')">Oʻzbek</button>
-    <button class="btn" onclick="setLanguage('en')">English</button>
-    <button class="btn" onclick="setLanguage('ru')">Русский</button>
+    <button class="btn" onclick="event.stopPropagation(); setLanguage('uz')">Oʻzbek</button>
+    <button class="btn" onclick="event.stopPropagation(); setLanguage('en')">English</button>
+    <button class="btn" onclick="event.stopPropagation(); setLanguage('ru')">Русский</button>
 </div>
 
 <div id="name-setup-modal">
@@ -605,7 +605,6 @@
             document.getElementById('turn-timer').innerText = LOCALES[currentLang].time + secondsLeft;
             if (secondsLeft <= 0) {
                 clearInterval(moveTimerInterval);
-                // Kimning navbatida vaqt tugasa, o'sha o'yinchi mag'lub bo'ladi
                 if (turn === myRole) {
                     finishGame(false, LOCALES[currentLang].timeOutLoss);
                 } else {
@@ -1014,7 +1013,7 @@
                 if (landR >= 0 && landR < 8 && landC >= 0 && landC < 8) {
                     const mid = b[row+dr][col+dc];
                     if (mid !== "empty" && mid.type !== piece.type && b[landR][landC] === "empty")
-                        moves.push({ from: {r: row, c: col}, to: {r: landR, c: landC}, captured: {r: row+dr, c: col+dc} });
+                        moves.push({ from: {r: row, c: col}, to: {r, c}, captured: {r: row+dr, c: col+dc} });
                 }
             }
         }
@@ -1026,8 +1025,8 @@
         for (let [dr, dc] of dirs) {
             if (piece.king) {
                 let r = row + dr, c = col + dc;
-                while (r >= 0 && r < 8 && c >= 0 && c < 8) {
-                    if (b[r][c] === "empty") moves.push({ from: {r: row, c: col}, to: {r, c} }); else break; r += dr; c += dc;
+                while (r >= 0 && r < 8 && c >= 8 && c < 8) {
+                    if (b[r][c] === "empty") moves.push({ from: {r: row, c: col}, to: {r} }); else break; r += dr; c += dc;
                 }
             } else {
                 const nR = row + dr, nC = col + dc;
