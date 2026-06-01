@@ -11,15 +11,33 @@
     <style>
         /* --- LOADING PROGRESS BAR CSS --- */
         #loading-screen {
+            display: none; /* Avval til tanlanadi, keyin blok ochiladi */
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: #1a1a1a; display: flex; flex-direction: column;
+            background: #1a1a1a; flex-direction: column;
             justify-content: center; align-items: center; z-index: 1000;
         }
         .progress-container { width: 70%; height: 12px; background: #333; border-radius: 10px; position: relative; margin-top: 20px; }
         .progress-bar { width: 0%; height: 100%; background: #2ecc71; box-shadow: 0 0 15px #2ecc71; transition: width 0.3s ease; position: relative; border-radius: 10px; }
         .progress-bar::after { content: '♟️'; position: absolute; right: -15px; top: -15px; font-size: 24px; filter: drop-shadow(0 0 5px #2ecc71); }
         #loading-text { color: white; font-size: 18px; font-family: sans-serif; letter-spacing: 2px; font-weight: 900; }
+
+        /* --- TIL TANLASH MODALI --- */
+        #lang-setup-modal { 
+            display: flex; /* Sahifa ochilganda birinchi shu ko'rinadi */
+            position: fixed; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            background: #1a1a1a; 
+            z-index: 1200; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        #lang-setup-modal h2 { margin-bottom: 25px; }
 
         /* --- ISM KIRITISH MODALI --- */
         #name-setup-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; z-index: 1100; flex-direction: column; align-items: center; justify-content: center; }
@@ -28,10 +46,11 @@
         /* --- ASOSIY CSS QISMI --- */
         * { box-sizing: border-box; touch-action: manipulation; }
         body { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; background: #1a1a1a; margin: 0; font-family: sans-serif; overflow: hidden; color: white; }
-        #menu { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+        #menu { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; z-index: 100; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         #menu h1 { color: #f1c40f; margin-bottom: 20px; font-weight: 900; }
-        .top-btns { position: absolute; top: 20px; width: 90%; display: flex; justify-content: space-between; }
+        .top-btns { position: absolute; top: 20px; width: 90%; display: flex; justify-content: space-between; align-items: center; }
         .circle-btn { width: 50px; height: 50px; font-size: 25px; cursor: pointer; background: #2c2c2c; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 2px solid #f1c40f; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        #admin-btn { background: #e74c3c; color: white; border: 2px solid #fff; display: flex; }
 
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 200; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         .modal-content { width: 90%; max-width: 400px; background: #2c2c2c; border-radius: 20px; padding: 25px; text-align: center; border: 2px solid #f1c40f; position: relative; }
@@ -65,6 +84,10 @@
         #resign-btn { margin-top: 20px; background: #e74c3c; color: white; display: none; padding: 12px 25px; border-radius: 12px; border: none; font-weight: 900; cursor: pointer; }
         #game-over-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 500; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
         #winner-msg { font-size: 9vw; font-weight: 900; color: #f1c40f; margin-bottom: 15px; }
+
+        /* --- TIZIM MODALLARI UCHUN EXTRA STYLES --- */
+        .admin-users-list { max-height: 200px; overflow-y: auto; background: #1a1a1a; margin: 15px 0; padding: 10px; border-radius: 10px; text-align: left; font-size: 13px; }
+        .admin-user-row { padding: 6px; border-bottom: 1px solid #333; display: flex; flex-direction: column; }
     </style>
 </head>
 <body onclick="handleInteraction()"> 
@@ -74,47 +97,87 @@
     <div class="progress-container"><div class="progress-bar" id="bar"></div></div>
 </div>
 
-<div id="name-setup-modal">
-    <h2 style="color:#f1c40f; font-weight:900;">ISMINGIZNI KIRITING</h2>
-    <input type="text" id="user-name-input" class="input-field" placeholder="Nikneym..." maxlength="15">
-    <button class="btn" onclick="saveUserName()">SAQLASH</button>
+<div id="lang-setup-modal">
+    <h2 style="color:#f1c40f; font-weight:900;">TILNI TANLANG / SELECT LANGUAGE / ВЫБЕРИТЕ ЯЗЫК</h2>
+    <button class="btn" onclick="setLanguage('uz')">Oʻzbek</button>
+    <button class="btn" onclick="setLanguage('en')">English</button>
+    <button class="btn" onclick="setLanguage('ru')">Русский</button>
 </div>
 
-<div id="menu" style="display: none;">
+<div id="name-setup-modal">
+    <h2 id="name-title" style="color:#f1c40f; font-weight:900;">ISMINGIZNI KIRITING</h2>
+    <input type="text" id="user-name-input" class="input-field" placeholder="Nikneym..." maxlength="15">
+    <button id="name-save-btn" class="btn" onclick="saveUserName()">SAQLASH</button>
+</div>
+
+<div id="menu">
     <div class="top-btns">
         <div class="circle-btn" onclick="openProfile()">👤</div>
+        <div id="admin-btn" class="circle-btn" onclick="openAdminAuthModal()">⚙️</div>
         <div class="circle-btn" onclick="toggleLeaderboard(true)">🏆</div>
     </div>
     <h1>♟️ SHASHKA ONLINE</h1>
     <p id="my-name-display" style="font-weight: 800;">...</p>
     <div id="my-rank-short" class="rank-tag">Yangi o'yinchi</div>
     
-    <h3 style="margin-top: 20px;">🟢 Onlayn o'yinchilar:</h3>
+    <h3 id="online-players-title" style="margin-top: 20px;">🟢 Onlayn o'yinchilar:</h3>
     <div id="online-list">Hozircha hech kim yo'q...</div>
     <br>
-    <button class="btn" onclick="tg.close()">Chiqish</button>
+    <button id="exit-btn" class="btn" onclick="tg.close()">Chiqish</button>
 </div>
 
 <div id="profile-modal" class="modal">
     <div class="modal-content">
-        <span class="edit-name-btn" onclick="editName()">✏️</span>
-        <h2 style="margin:0; color:#f1c40f;">PROFIL</h2>
+        <span class="edit-name-btn" onclick="openEditNameModal()">✏️</span>
+        <h2 id="prof-title" style="margin:0; color:#f1c40f;">PROFIL</h2>
         <h3 id="prof-name" style="margin: 10px 0;">Ism</h3>
         <div id="prof-rank" class="rank-tag">Rank</div>
         <div class="stats-grid">
-            <div class="stat-box"><div style="color:#2ecc71; font-weight:900;" id="prof-wins">0</div>G'alaba</div>
-            <div class="stat-box"><div style="color:#e74c3c; font-weight:900;" id="prof-loss">0</div>Mag'lubiyat</div>
+            <div class="stat-box"><div style="color:#2ecc71; font-weight:900;" id="prof-wins">0</div><span id="label-wins">G'alaba</span></div>
+            <div class="stat-box"><div style="color:#e74c3c; font-weight:900;" id="prof-loss">0</div><span id="label-losses">Mag'lubiyat</span></div>
         </div>
         <p id="next-rank-info" style="font-size: 12px; margin-top: 15px; color: #aaa;"></p>
-        <button class="btn" onclick="closeProfile()">Yopish</button>
+        <button id="prof-close-btn" class="btn" onclick="closeProfile()">Yopish</button>
+    </div>
+</div>
+
+<div id="edit-name-modal" class="modal">
+    <div class="modal-content">
+        <h2 style="color:#f1c40f;" id="edit-title-label">YANGI ISM KIRITING</h2>
+        <input type="text" id="edit-name-input" class="input-field" maxlength="15">
+        <button class="btn" onclick="saveEditedName()">SAQLASH</button>
+        <button class="btn" style="background:#555; color:white;" onclick="closeEditNameModal()">YOPISH</button>
     </div>
 </div>
 
 <div id="leaderboard-modal" class="modal">
     <div class="modal-content" style="max-height: 80vh; overflow-y: auto;">
-        <h2 style="font-weight: 900; color:#f1c40f;">🏆 Eng yaxshilar</h2>
+        <h2 id="lead-title" style="font-weight: 900; color:#f1c40f;">🏆 Eng yaxshilar</h2>
         <div id="leaderboard-list"></div>
-        <button class="btn" onclick="toggleLeaderboard(false)">Yopish</button>
+        <button id="lead-close-btn" class="btn" onclick="toggleLeaderboard(false)">Yopish</button>
+    </div>
+</div>
+
+<div id="admin-auth-modal" class="modal">
+    <div class="modal-content">
+        <h2 style="color:#e74c3c;">ADMIN LOGIN</h2>
+        <input type="text" id="admin-login-input" class="input-field" placeholder="Login...">
+        <input type="password" id="admin-pass-input" class="input-field" placeholder="Parol...">
+        <button class="btn" style="background:#e74c3c; color:white;" onclick="submitAdminAuth()">KIRISH</button>
+        <button class="btn" style="background:#555; color:white;" onclick="closeAdminAuthModal()">YOPISH</button>
+    </div>
+</div>
+
+<div id="admin-modal" class="modal">
+    <div class="modal-content" style="max-width: 450px; width: 95%;">
+        <h2 style="margin:0; color:#e74c3c;">⚙️ ADMIN PANEL</h2>
+        <p style="color: #aaa; margin: 5px 0;">Jonli monitoring va Qurilmalar nazorati</p>
+        <hr style="border: 1px solid #444;">
+        
+        <div style="text-align: left; font-weight: bold; margin-top: 10px; color: #f1c40f;">O'yinchilar holati:</div>
+        <div class="admin-users-list" id="admin-players-container">Yuklanmoqda...</div>
+        
+        <button class="btn" style="background:#e74c3c; color:white;" onclick="closeAdminPanel()">YOPISH</button>
     </div>
 </div>
 
@@ -139,6 +202,146 @@
     const tg = window.Telegram.WebApp;
     tg.expand();
 
+    const ADMIN_LOGIN = "admin";
+    const ADMIN_PASSWORD = "12345"; 
+
+    const LOCALES = {
+        uz: {
+            loading: "YUKLANMOQDA...",
+            enterName: "ISMINGIZNI KIRITING",
+            placeholder: "Nikneym...",
+            save: "SAQLASH",
+            welcome: "👋 Salom, ",
+            onlinePlayers: "🟢 Onlayn o'yinchilar:",
+            noPlayers: "Hozircha hech kim yo'q...",
+            exit: "Chiqish",
+            profile: "PROFIL",
+            wins: "G'alaba",
+            losses: "Mag'lubiyat",
+            close: "Yopish",
+            bestPlayers: "🏆 Eng yaxshilar",
+            botBtn: "🤖 BOT BILAN O'YNASH",
+            noOnline: "Hozir onlayn o'yinchilar yo'q",
+            invite: "🎮 Taklif",
+            whiteTurn: "⚪ Oqlar yurishi",
+            blackTurn: "⚫ Qoralar yurishi",
+            time: "Vaqt: ",
+            resign: "🏳️ Taslim bo'lish",
+            menuReturn: "Menyuga qaytish: ",
+            nameAlert: "Ism kamida 3 ta harf bo'lsin!",
+            editPrompt: "Yangi ismni kiriting:",
+            resignConfirm: "Taslim bo'lasizmi?",
+            opponentResigned: "Raqib taslim bo'ldi!",
+            youResigned: "Siz taslim bo'ldingiz!",
+            lostNoPieces: "Siz yutqazdingiz! (Toshlar qolmadi/Yurish yo'q)",
+            youWon: "Siz yutdingiz!",
+            nextRank: "Keyingi rank",
+            forNextRank: "uchun yana",
+            winsNeeded: "ta g'alaba kerak.",
+            maxRank: "Siz eng yuqori darajadasiz!",
+            inviteSent: "taklif qildi. Qabul qilasizmi?",
+            authCancel: "Kirish bekor qilindi.",
+            authFail: "Login yoki parol noto'g'ri!",
+            ranks: [
+                { min: 0, name: "Yangi o'yinchi", icon: "🌱" },
+                { min: 10, name: "Havaskor", icon: "🥉" },
+                { min: 25, name: "Usta", icon: "🥈" },
+                { min: 50, name: "Grossmeyster", icon: "🥇" },
+                { min: 100, name: "Shashka Qiroli", icon: "👑" }
+            ]
+        },
+        en: {
+            loading: "LOADING...",
+            enterName: "ENTER YOUR NAME",
+            placeholder: "Nickname...",
+            save: "SAVE",
+            welcome: "👋 Hello, ",
+            onlinePlayers: "🟢 Online Players:",
+            noPlayers: "No one here yet...",
+            exit: "Exit",
+            profile: "PROFILE",
+            wins: "Wins",
+            losses: "Losses",
+            close: "Close",
+            bestPlayers: "🏆 Leaderboard",
+            botBtn: "🤖 PLAY WITH BOT",
+            noOnline: "No online players right now",
+            invite: "🎮 Invite",
+            whiteTurn: "⚪ White's turn",
+            blackTurn: "⚫ Black's turn",
+            time: "Time: ",
+            resign: "🏳️ Resign",
+            menuReturn: "Return to menu: ",
+            nameAlert: "Name must be at least 3 characters!",
+            editPrompt: "Enter new name:",
+            resignConfirm: "Do you want to resign?",
+            opponentResigned: "Opponent resigned!",
+            youResigned: "You resigned!",
+            lostNoPieces: "You lost! (No pieces left/No moves)",
+            youWon: "You won!",
+            nextRank: "Next rank",
+            forNextRank: "needs",
+            winsNeeded: "more wins.",
+            maxRank: "You are at the highest rank!",
+            inviteSent: "invited you. Do you accept?",
+            authCancel: "Login canceled.",
+            authFail: "Incorrect login or password!",
+            ranks: [
+                { min: 0, name: "New Player", icon: "🌱" },
+                { min: 10, name: "Amateur", icon: "🥉" },
+                { min: 25, name: "Master", icon: "🥈" },
+                { min: 50, name: "Grandmaster", icon: "🥇" },
+                { min: 100, name: "Checkers King", icon: "👑" }
+            ]
+        },
+        ru: {
+            loading: "ЗАГРУЗКА...",
+            enterName: "ВВЕДИТЕ СВОЕ ИМЯ",
+            placeholder: "Никнейм...",
+            save: "СОХРАНИТЬ",
+            welcome: "👋 Привет, ",
+            onlinePlayers: "🟢 Игроки онлайн:",
+            noPlayers: "Никого еще нет...",
+            exit: "Выход",
+            profile: "ПРОФИЛЬ",
+            wins: "Победы",
+            losses: "Поражения",
+            close: "Закрыть",
+            bestPlayers: "🏆 Лидеры",
+            botBtn: "🤖 ИГРАТЬ С БОТОМ",
+            noOnline: "Сейчас нет игроков онлайн",
+            invite: "🎮 Пригласить",
+            whiteTurn: "⚪ Ход белых",
+            blackTurn: "⚫ Ход черных",
+            time: "Время: ",
+            resign: "🏳️ Сдаться",
+            menuReturn: "Вернуться в меню: ",
+            nameAlert: "Имя должно содержать не менее 3 символов!",
+            editPrompt: "Введите новое имя:",
+            resignConfirm: "Вы хотите сдаться?",
+            opponentResigned: "Соперник сдался!",
+            youResigned: "Вы сдались!",
+            lostNoPieces: "Вы проиграли! (Не осталось фигур/Нет ходов)",
+            youWon: "Вы выиграли!",
+            nextRank: "Следующий ранг",
+            forNextRank: "нужно еще",
+            winsNeeded: "побед.",
+            maxRank: "У вас самый высокий ранг!",
+            inviteSent: "пригласил вас. Принять?",
+            authCancel: "Вход отменен.",
+            authFail: "Неверный логин или пароль!",
+            ranks: [
+                { min: 0, name: "Новый игрок", icon: "🌱" },
+                { min: 10, name: "Любитель", icon: "🥉" },
+                { min: 25, name: "Мастер", icon: "🥈" },
+                { min: 50, name: "Гроссмейстер", icon: "🥇" },
+                { min: 100, name: "Король шашек", icon: "👑" }
+            ]
+        }
+    };
+
+    let currentLang = localStorage.getItem('shashka_lang') || 'uz';
+
     const firebaseConfig = {
         apiKey: "AIzaSyBCvV83aHz4VXCiUXykAmcxIj3mOCjeKaM",
         authDomain: "shashka-68221.firebaseapp.com",
@@ -151,20 +354,138 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // --- TELEGRAM VA APK TEKSHIRUVI ---
     let userId, currentName;
 
     if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-        // Telegramdan kirilgan
         userId = tg.initDataUnsafe.user.id.toString();
         currentName = tg.initDataUnsafe.user.first_name;
         localStorage.setItem('shashka_userid', userId);
         localStorage.setItem('shashka_username', currentName);
     } else {
-        // APK yoki Brauzerdan kirilgan
         userId = localStorage.getItem('shashka_userid') || "u" + Date.now();
         localStorage.setItem('shashka_userid', userId);
         currentName = localStorage.getItem('shashka_username') || "";
+    }
+
+    // SAVED QURILMA MODELINI ANIQLASH FUNKSIYASI
+    function getDeviceModel() {
+        const ua = navigator.userAgent;
+        if (/Android/i.test(ua)) {
+            const match = ua.match(/Android\s+([^\s;]+)\s*;?\s*([^;)]+)/);
+            if (match && match[2]) {
+                return match[2].trim();
+            }
+            return "Android Device";
+        }
+        if (/iPhone|iPad|iPod/i.test(ua)) {
+            return "Apple iOS Device";
+        }
+        if (/Windows/i.test(ua)) return "PC (Windows)";
+        if (/Macintosh/i.test(ua)) return "PC (MacOS)";
+        return "Noma'lum qurilma";
+    }
+
+    // ADMIN TIZIMI MODALLARI
+    function openAdminAuthModal() {
+        document.getElementById('admin-auth-modal').style.display = 'flex';
+    }
+    function closeAdminAuthModal() {
+        document.getElementById('admin-auth-modal').style.display = 'none';
+        document.getElementById('admin-login-input').value = '';
+        document.getElementById('admin-pass-input').value = '';
+    }
+
+    function submitAdminAuth() {
+        const l = document.getElementById('admin-login-input').value;
+        const p = document.getElementById('admin-pass-input').value;
+        if (l === ADMIN_LOGIN && p === ADMIN_PASSWORD) {
+            closeAdminAuthModal();
+            openAdminPanel();
+        } else {
+            alert(LOCALES[currentLang].authFail);
+        }
+    }
+
+    let adminPresenceListener = null;
+    function openAdminPanel() { 
+        document.getElementById('admin-modal').style.display = 'flex';
+        const container = document.getElementById('admin-players-container');
+        
+        adminPresenceListener = db.ref('presence').on('value', (snap) => {
+            container.innerHTML = '';
+            let hasUsers = false;
+            snap.forEach(child => {
+                hasUsers = true;
+                const user = child.val();
+                const statusStr = user.online ? (user.inGame ? "<b style='color:#f1c40f'>O'YINDA</b>" : "<b style='color:#2ecc71'>ONLAYN</b>") : "<b style='color:#999'>OFFLAYN</b>";
+                const device = user.device || "Kiritilmagan";
+                container.innerHTML += `
+                    <div class="admin-user-row">
+                        <div>👤 <b>${user.name || "Ismsiz"}</b> (ID: ${child.key})</div>
+                        <div>Holati: ${statusStr} | Qurilma: <span style='color:#64b5f6'>${device}</span></div>
+                    </div>
+                `;
+            });
+            if(!hasUsers) container.innerText = "Hech qanday ma'lumot yo'q.";
+        });
+    }
+    
+    function closeAdminPanel() { 
+        document.getElementById('admin-modal').style.display = 'none'; 
+        if(adminPresenceListener) {
+            db.ref('presence').off('value', adminPresenceListener);
+        }
+    }
+
+    // TAHRIRLASH MODALI FUNKSIYALARI
+    function openEditNameModal() {
+        document.getElementById('edit-name-input').value = currentName;
+        document.getElementById('edit-name-modal').style.display = 'flex';
+    }
+    function closeEditNameModal() {
+        document.getElementById('edit-name-modal').style.display = 'none';
+    }
+    function saveEditedName() {
+        const input = document.getElementById('edit-name-input');
+        const newName = input.value.trim();
+        if (newName && newName.length >= 3) {
+            currentName = newName;
+            localStorage.setItem('shashka_username', currentName);
+            document.getElementById('my-name-display').innerText = LOCALES[currentLang].welcome + currentName;
+            document.getElementById('prof-name').innerText = currentName;
+            updatePresence();
+            db.ref('stats/' + userId).update({ name: currentName });
+            closeEditNameModal();
+        } else {
+            alert(LOCALES[currentLang].nameAlert);
+        }
+    }
+
+    function setLanguage(lang) {
+        currentLang = lang;
+        localStorage.setItem('shashka_lang', lang);
+        document.getElementById('lang-setup-modal').style.display = 'none';
+        
+        // Til tanlangandan keyin progress panelini yoqish
+        startLoading();
+    }
+
+    function applyLocalization() {
+        const lang = LOCALES[currentLang];
+        document.getElementById('loading-text').innerText = lang.loading;
+        document.getElementById('name-title').innerText = lang.enterName;
+        document.getElementById('user-name-input').placeholder = lang.placeholder;
+        document.getElementById('name-save-btn').innerText = lang.save;
+        document.getElementById('online-players-title').innerText = lang.onlinePlayers;
+        document.getElementById('exit-btn').innerText = lang.exit;
+        document.getElementById('prof-title').innerText = lang.profile;
+        document.getElementById('label-wins').innerText = lang.wins;
+        document.getElementById('label-losses').innerText = lang.losses;
+        document.getElementById('prof-close-btn').innerText = lang.close;
+        document.getElementById('lead-title').innerText = lang.bestPlayers;
+        document.getElementById('lead-close-btn').innerText = lang.close;
+        document.getElementById('resign-btn').innerText = lang.resign;
+        document.getElementById('edit-title-label').innerText = lang.editPrompt;
     }
 
     function saveUserName() {
@@ -175,73 +496,64 @@
             localStorage.setItem('shashka_username', name);
             document.getElementById('name-setup-modal').style.display = 'none';
             document.getElementById('menu').style.display = 'flex';
-            document.getElementById('my-name-display').innerText = "👋 Salom, " + currentName;
+            document.getElementById('my-name-display').innerText = LOCALES[currentLang].welcome + currentName;
             updatePresence();
-            // Statisikada ismni yangilash
             db.ref('stats/' + userId).update({ name: currentName });
         } else {
-            alert("Ism kamida 3 ta harf bo'lsin!");
-        }
-    }
-
-    function editName() {
-        const newName = prompt("Yangi ismni kiriting:", currentName);
-        if (newName && newName.trim().length >= 3) {
-            currentName = newName.trim();
-            localStorage.setItem('shashka_username', currentName);
-            document.getElementById('my-name-display').innerText = "👋 Salom, " + currentName;
-            document.getElementById('prof-name').innerText = currentName;
-            updatePresence();
-            db.ref('stats/' + userId).update({ name: currentName });
+            alert(LOCALES[currentLang].nameAlert);
         }
     }
 
     function startLoading() {
+        document.getElementById('loading-screen').style.display = 'flex';
         let width = 0;
         const bar = document.getElementById('bar');
+        applyLocalization();
         const interval = setInterval(() => {
             if (width >= 100) {
                 clearInterval(interval);
                 document.getElementById('loading-screen').style.display = 'none';
                 
-                // Agar ism bo'lmasa (APK holatida) ism so'rash
                 if (!currentName) {
                     document.getElementById('name-setup-modal').style.display = 'flex';
                 } else {
                     document.getElementById('menu').style.display = 'flex';
-                    document.getElementById('my-name-display').innerText = "👋 Salom, " + currentName;
+                    document.getElementById('my-name-display').innerText = LOCALES[currentLang].welcome + currentName;
                     updatePresence();
                 }
                 updateMyRankInMenu();
             } else { width += 1; bar.style.width = width + '%'; }
         }, 20);
     }
-    window.onload = startLoading;
+
+    // SAHIFA YUKLANGANDA BIRINCHI NAVBATDA TIL TEKSHIRILADI
+    window.onload = function() {
+        if (!localStorage.getItem('shashka_lang')) {
+            document.getElementById('lang-setup-modal').style.display = 'flex';
+        } else {
+            document.getElementById('lang-setup-modal').style.display = 'none';
+            startLoading();
+        }
+    };
 
     function updatePresence() {
         if (!userId || !currentName) return;
         const myPres = db.ref('presence/' + userId);
-        myPres.set({ name: currentName, online: true, inGame: false });
+        const deviceModel = getDeviceModel();
+        myPres.set({ name: currentName, online: true, inGame: false, device: deviceModel });
         myPres.onDisconnect().update({ online: false, inGame: false });
     }
 
-    // --- O'YIN LOGIKASI ---
-    const RANKS = [
-        { min: 0, name: "Yangi o'yinchi", icon: "🌱" },
-        { min: 10, name: "Havaskor", icon: "🥉" },
-        { min: 25, name: "Usta", icon: "🥈" },
-        { min: 50, name: "Grossmeyster", icon: "🥇" },
-        { min: 100, name: "Shashka Qiroli", icon: "👑" }
-    ];
-
     function getRank(wins) {
-        let currentRank = RANKS[0];
-        for (let r of RANKS) if (wins >= r.min) currentRank = r;
+        const ranks = LOCALES[currentLang].ranks;
+        let currentRank = ranks[0];
+        for (let r of ranks) if (wins >= r.min) currentRank = r;
         return currentRank;
     }
 
     let myRole = '', gameId = '', board = [], turn = 'white', selected = null, mustJumpAgain = false, gameOver = false, inGame = false, opponentId = '', sessionStartTime = Date.now();
     let moveTimerInterval = null, secondsLeft = 15;
+    let isBotGame = false;
 
     function openProfile() {
         db.ref('stats/' + userId).once('value', (snap) => {
@@ -251,8 +563,13 @@
             document.getElementById('prof-wins').innerText = data.wins || 0;
             document.getElementById('prof-loss').innerText = data.losses || 0;
             document.getElementById('prof-rank').innerText = rank.icon + " " + rank.name;
-            const nextRank = RANKS.find(r => r.min > (data.wins || 0));
-            document.getElementById('next-rank-info').innerText = nextRank ? `Keyingi rank (${nextRank.name}) uchun yana ${nextRank.min - data.wins} ta g'alaba kerak.` : "Siz eng yuqori darajadasiz!";
+            const ranks = LOCALES[currentLang].ranks;
+            const nextRank = ranks.find(r => r.min > (data.wins || 0));
+            
+            document.getElementById('next-rank-info').innerText = nextRank ? 
+                `${LOCALES[currentLang].nextRank} (${nextRank.name}) ${LOCALES[currentLang].forNextRank} ${nextRank.min - data.wins} ${LOCALES[currentLang].winsNeeded}` : 
+                LOCALES[currentLang].maxRank;
+                
             document.getElementById('profile-modal').style.display = 'flex';
         });
     }
@@ -275,17 +592,18 @@
     function startMoveTimer() {
         clearInterval(moveTimerInterval);
         secondsLeft = 15;
-        document.getElementById('turn-timer').innerText = "Vaqt: " + secondsLeft;
+        document.getElementById('turn-timer').innerText = LOCALES[currentLang].time + secondsLeft;
         moveTimerInterval = setInterval(() => {
             if (gameOver) { clearInterval(moveTimerInterval); return; }
             secondsLeft--;
-            document.getElementById('turn-timer').innerText = "Vaqt: " + secondsLeft;
+            document.getElementById('turn-timer').innerText = LOCALES[currentLang].time + secondsLeft;
             if (secondsLeft <= 0) {
                 clearInterval(moveTimerInterval);
                 if (turn === myRole) {
                     selected = null; mustJumpAgain = false;
                     turn = (turn === 'white') ? 'black' : 'white';
                     updateFirebase(false); render(); startMoveTimer();
+                    if (isBotGame && turn === 'black') setTimeout(makeBotMove, 400);
                 }
             }
         }, 1000);
@@ -333,6 +651,36 @@
         }
     }
 
+    function checkGameEndStatus() {
+        let whitePieces = 0, blackPieces = 0;
+        let whiteMoves = 0, blackMoves = 0;
+
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const p = board[r][c];
+                if (p && p !== "empty") {
+                    if (p.type === 'white') {
+                        whitePieces++;
+                        if (getCaptureMoves(r, c, p).length > 0 || getSimpleMoves(r, c, p).length > 0) whiteMoves++;
+                    } else {
+                        blackPieces++;
+                        if (getCaptureMoves(r, c, p).length > 0 || getSimpleMoves(r, c, p).length > 0) blackMoves++;
+                    }
+                }
+            }
+        }
+
+        if (whitePieces === 0 || whiteMoves === 0) {
+            finishGame(myRole === 'black', myRole === 'white' ? LOCALES[currentLang].lostNoPieces : LOCALES[currentLang].youWon);
+            return true;
+        }
+        if (blackPieces === 0 || blackMoves === 0) {
+            finishGame(myRole === 'white', myRole === 'black' ? LOCALES[currentLang].lostNoPieces : LOCALES[currentLang].youWon);
+            return true;
+        }
+        return false;
+    }
+
     function finishGame(won, message) {
         if (gameOver) return;
         gameOver = true;
@@ -341,18 +689,19 @@
         document.getElementById('game-over-overlay').style.display = 'flex';
         if (won) playSound('winner-sound'); else playSound('loser-sound');
         updateStats(won);
-        if (gameId) db.ref('games/' + gameId).remove();
+        if (gameId && !isBotGame) db.ref('games/' + gameId).remove();
         db.ref('presence/' + userId).update({ inGame: false });
         let timeLeft = 10;
         const exitInt = setInterval(() => {
             timeLeft--;
-            document.getElementById('exit-timer').innerText = "Menyuga qaytish: " + timeLeft;
+            document.getElementById('exit-timer').innerText = LOCALES[currentLang].menuReturn + timeLeft;
             if (timeLeft <= 0) { clearInterval(exitInt); location.reload(); }
         }, 1000);
     }
 
     function startGame(id, role, oppId, existingBoard = null) {
         inGame = true; gameId = id; myRole = role; opponentId = oppId;
+        isBotGame = (oppId === 'bot');
         stopLobbyMusic(); 
         board = existingBoard ? JSON.parse(existingBoard) : getInitialBoard();
         document.getElementById('menu').style.display = 'none';
@@ -363,33 +712,36 @@
         if (myRole === 'black') boardDiv.classList.add('rotate-board');
         else boardDiv.classList.remove('rotate-board');
 
-        db.ref('games/' + gameId + '/lastMove').on('value', (snap) => {
-            const data = snap.val();
-            if (data && data.player !== myRole) { 
-                board = JSON.parse(data.newBoard); turn = data.newTurn; 
-                if (data.hadCapture) playSound('capture-sound'); else playSound('move-sound');
-                render(); startMoveTimer();
-            }
-        });
-        db.ref('games/' + gameId + '/event').on('value', (snap) => {
-            const ev = snap.val();
-            if (ev && ev.by !== userId && ev.type === 'resign') finishGame(true, "Raqib taslim bo'ldi!");
-        });
+        if (!isBotGame) {
+            db.ref('games/' + gameId + '/lastMove').on('value', (snap) => {
+                const data = snap.val();
+                if (data && data.player !== myRole) { 
+                    board = JSON.parse(data.newBoard); turn = data.newTurn; 
+                    if (data.hadCapture) playSound('capture-sound'); else playSound('move-sound');
+                    render(); 
+                    if (!checkGameEndStatus()) startMoveTimer();
+                }
+            });
+            db.ref('games/' + gameId + '/event').on('value', (snap) => {
+                const ev = snap.val();
+                if (ev && ev.by !== userId && ev.type === 'resign') finishGame(true, LOCALES[currentLang].opponentResigned);
+            });
+        }
         render(); startMoveTimer();
         db.ref('presence/' + userId).update({ inGame: true });
     }
 
     function updateFirebase(hadCapture = false) {
-        if (!gameId || gameOver) return;
+        if (!gameId || gameOver || isBotGame) return;
         db.ref('games/' + gameId + '/lastMove').set({
             player: myRole, newBoard: JSON.stringify(board), newTurn: turn, ts: Date.now(), hadCapture: hadCapture
         });
     }
 
     function resignGame() {
-        if (confirm("Taslim bo'lasizmi?")) {
-            db.ref('games/' + gameId + '/event').set({ type: 'resign', by: userId });
-            finishGame(false, "Siz taslim bo'ldingiz!");
+        if (confirm(LOCALES[currentLang].resignConfirm)) {
+            if (!isBotGame) db.ref('games/' + gameId + '/event').set({ type: 'resign', by: userId });
+            finishGame(false, LOCALES[currentLang].youResigned);
         }
     }
 
@@ -419,7 +771,7 @@
                 boardDiv.appendChild(cell);
             }
         }
-        document.getElementById('status').innerText = turn === 'white' ? "⚪ Oqlar yurishi" : "⚫ Qoralar yurishi";
+        document.getElementById('status').innerText = turn === 'white' ? LOCALES[currentLang].whiteTurn : LOCALES[currentLang].blackTurn;
     }
 
     function getCaptureMoves(row, col, piece) {
@@ -450,6 +802,28 @@
         return moves;
     }
 
+    function getSimpleMoves(row, col, piece) {
+        if (!piece || piece === "empty") return [];
+        const moves = [];
+        const dirs = piece.king ? [[1,1], [1,-1], [-1,1], [-1,-1]] : (piece.type === 'white' ? [[-1,1], [-1,-1]] : [[1,1], [1,-1]]);
+        for (let [dr, dc] of dirs) {
+            if (piece.king) {
+                let r = row + dr, c = col + dc;
+                while (r >= 0 && r < 8 && c >= 0 && c < 8) {
+                    if (board[r][c] === "empty") moves.push({ from: {r: row, c: col}, to: {r, c} });
+                    else break;
+                    r += dr; c += dc;
+                }
+            } else {
+                const nR = row + dr, nC = col + dc;
+                if (nR >= 0 && nR < 8 && nC >= 0 && nC < 8 && board[nR][nC] === "empty") {
+                    moves.push({ from: {r: row, c: col}, to: {r: nR, c: nC} });
+                }
+            }
+        }
+        return moves;
+    }
+
     function tryMove(fR, fC, tR, tC) {
         const piece = board[fR][fC];
         const rD = tR - fR, cD = tC - fC, absR = Math.abs(rD);
@@ -468,9 +842,193 @@
         if (cap) { board[cap.r][cap.c] = "empty"; playSound('capture-sound'); } else playSound('move-sound');
         board[tR][tC] = piece; board[fR][fC] = "empty";
         if ((piece.type === 'white' && tR === 0) || (piece.type === 'black' && tR === 7)) piece.king = true;
-        if (cap && getCaptureMoves(tR, tC, board[tR][tC]).length > 0) { selected = { r: tR, c: tC }; mustJumpAgain = true; }
-        else { selected = null; mustJumpAgain = false; turn = (turn === 'white') ? 'black' : 'white'; startMoveTimer(); }
-        updateFirebase(!!cap); render(); return true;
+        
+        if (cap && getCaptureMoves(tR, tC, board[tR][tC]).length > 0) { 
+            selected = { r: tR, c: tC }; mustJumpAgain = true; 
+            updateFirebase(true); render();
+            if (isBotGame && turn === 'black') setTimeout(makeBotMove, 300);
+        }
+        else { 
+            selected = null; mustJumpAgain = false; turn = (turn === 'white') ? 'black' : 'white'; 
+            updateFirebase(!!cap); render(); 
+            if (!checkGameEndStatus()) {
+                startMoveTimer(); 
+                if (isBotGame && turn === 'black') setTimeout(makeBotMove, 400);
+            }
+        }
+        return true;
+    }
+
+    function makeBotMove() {
+        if (gameOver || turn !== 'black') return;
+        if (mustJumpAgain && selected) {
+            let caps = getCaptureMoves(selected.r, selected.c, board[selected.r][selected.c]);
+            if (caps.length > 0) {
+                const move = caps[Math.floor(Math.random() * caps.length)];
+                executeMove(move.from.r, move.from.c, move.to.r !== undefined ? move.to.r : move.to.nR, move.to.c !== undefined ? move.to.c : move.to.nC, move.captured);
+                return;
+            }
+        }
+        let bestMove = minimaxDecision(board, 4); // Chuqurlik optimal qiymatga tushirildi
+        if (bestMove) {
+            executeMove(bestMove.from.r, bestMove.from.c, bestMove.to.r !== undefined ? bestMove.to.r : bestMove.to.nR, bestMove.to.c !== undefined ? bestMove.to.c : bestMove.to.nC, bestMove.captured || null);
+        } else { checkGameEndStatus(); }
+    }
+
+    function minimaxDecision(currentBoard, depth) {
+        let alpha = -Infinity; let beta = Infinity;
+        let legals = getAllLegalMovesForAI(currentBoard, 'black');
+        if (legals.length === 0) return null;
+        let bestMove = null; let bestValue = -Infinity;
+        let captures = legals.filter(m => m.captured);
+        let movesToEvaluate = captures.length > 0 ? captures : legals;
+        movesToEvaluate.sort((a, b) => (b.captured ? 1 : 0) - (a.captured ? 1 : 0));
+        for (let move of movesToEvaluate) {
+            let nextBoard = simulateMove(currentBoard, move);
+            let value = minimax(nextBoard, depth - 1, alpha, beta, false);
+            if (value > bestValue) { bestValue = value; bestMove = move; }
+            alpha = Math.max(alpha, bestValue);
+        }
+        return bestMove;
+    }
+
+    function minimax(tempBoard, depth, alpha, beta, isMaximizing) {
+        if (depth === 0 || isGameOverBoard(tempBoard)) return evaluateBoard(tempBoard);
+        let player = isMaximizing ? 'black' : 'white';
+        let legals = getAllLegalMovesForAI(tempBoard, player);
+        if (legals.length === 0) return isMaximizing ? -20000 : 20000;
+        let captures = legals.filter(m => m.captured);
+        let movesToEvaluate = captures.length > 0 ? captures : legals;
+        if (isMaximizing) {
+            let maxEval = -Infinity;
+            for (let move of movesToEvaluate) {
+                let nextBoard = simulateMove(tempBoard, move);
+                let score = minimax(nextBoard, depth - 1, alpha, beta, false);
+                maxEval = Math.max(maxEval, score); alpha = Math.max(alpha, score);
+                if (beta <= alpha) break;
+            }
+            return maxEval;
+        } else {
+            let minEval = Infinity;
+            for (let move of movesToEvaluate) {
+                let nextBoard = simulateMove(tempBoard, move);
+                let score = minimax(nextBoard, depth - 1, alpha, beta, true);
+                minEval = Math.min(minEval, score); beta = Math.min(beta, score);
+                if (beta <= alpha) break;
+            }
+            return minEval;
+        }
+    }
+
+    function evaluateBoard(b) {
+        let score = 0;
+        const positionWeight = [
+            [0, 4, 0, 4, 0, 4, 0, 4], [4, 0, 5, 0, 5, 0, 4, 0], [0, 5, 0, 7, 0, 6, 0, 4], [4, 0, 8, 0, 8, 0, 5, 0],
+            [0, 6, 0, 8, 0, 8, 0, 4], [4, 0, 6, 0, 6, 0, 5, 0], [0, 5, 0, 5, 0, 5, 0, 4], [4, 0, 4, 0, 4, 0, 4, 0]
+        ];
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                let p = b[r][c];
+                if (p && p !== "empty") {
+                    let pieceScore = 0;
+                    if (p.king) pieceScore += 250;
+                    else {
+                        pieceScore += 50; pieceScore += (p.type === 'black') ? (r * 6) : ((7 - r) * 6);
+                        pieceScore += positionWeight[r][c];
+                        if (p.type === 'black' && r === 6) pieceScore += 20;
+                        if (p.type === 'white' && r === 1) pieceScore += 20;
+                    }
+                    if (c === 0 || c === 7) pieceScore += 15;
+                    if (p.type === 'black' && r === 0) pieceScore += 30;
+                    if (p.type === 'white' && r === 7) pieceScore += 30;
+                    if (p.type === 'black') score += pieceScore; else score -= pieceScore;
+                }
+            }
+        }
+        return score;
+    }
+
+    function getAllLegalMovesForAI(b, player) {
+        let moves = []; let captures = [];
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                let p = b[r][c];
+                if (p && p !== "empty" && p.type === player) {
+                    let caps = getCaptureMovesForAI(r, c, p, b); if (caps.length > 0) captures.push(...caps);
+                    let sims = getSimpleMovesForAI(r, c, p, b); if (sims.length > 0) moves.push(...sims);
+                }
+            }
+        }
+        return captures.length > 0 ? captures : moves;
+    }
+
+    function simulateMove(currentBoard, move) {
+        let newB = [];
+        for (let i = 0; i < 8; i++) {
+            newB[i] = [];
+            for (let j = 0; j < 8; j++) {
+                if (currentBoard[i][j] === "empty") newB[i][j] = "empty";
+                else newB[i][j] = { type: currentBoard[i][j].type, king: currentBoard[i][j].king };
+            }
+        }
+        let fromR = move.from.r, fromC = move.from.c;
+        let targetR = move.to.r !== undefined ? move.to.r : move.to.nR;
+        let targetC = move.to.c !== undefined ? move.to.c : move.to.nC;
+        let p = newB[fromR][fromC];
+        if (move.captured) newB[move.captured.r][move.captured.c] = "empty";
+        newB[targetR][targetC] = p; newB[fromR][fromC] = "empty";
+        if ((p.type === 'white' && targetR === 0) || (p.type === 'black' && targetR === 7)) p.king = true;
+        return newB;
+    }
+
+    function isGameOverBoard(b) {
+        let w = 0, bl = 0;
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                if (b[r][c] && b[r][c] !== "empty") { if (b[r][c].type === 'white') w++; else bl++; }
+            }
+        }
+        return w === 0 || bl === 0;
+    }
+
+    function getCaptureMovesForAI(row, col, piece, b) {
+        const moves = []; const dirs = [[1,1], [1,-1], [-1,1], [-1,-1]];
+        for (let [dr, dc] of dirs) {
+            if (piece.king) {
+                let r = row + dr, c = col + dc, foundEnemy = null;
+                while (r >= 0 && r < 8 && c >= 0 && c < 8) {
+                    const curr = b[r][c];
+                    if (curr !== "empty") {
+                        if (curr.type === piece.type) break; if (foundEnemy) break; foundEnemy = {r, c};
+                    } else if (foundEnemy) moves.push({ from: {r: row, c: col}, to: {r, c}, captured: {r: foundEnemy.r, c: foundEnemy.c} });
+                    r += dr; c += dc;
+                }
+            } else {
+                const landR = row + 2*dr, landC = col + 2*dc;
+                if (landR >= 0 && landR < 8 && landC >= 0 && landC < 8) {
+                    const mid = b[row+dr][col+dc];
+                    if (mid !== "empty" && mid.type !== piece.type && b[landR][landC] === "empty")
+                        moves.push({ from: {r: row, c: col}, to: {r: landR, c: landC}, captured: {r: row+dr, c: col+dc} });
+                }
+            }
+        }
+        return moves;
+    }
+
+    function getSimpleMovesForAI(row, col, piece, b) {
+        const moves = []; const dirs = piece.king ? [[1,1], [1,-1], [-1,1], [-1,-1]] : (piece.type === 'white' ? [[-1,1], [-1,-1]] : [[1,1], [1,-1]]);
+        for (let [dr, dc] of dirs) {
+            if (piece.king) {
+                let r = row + dr, c = col + dc;
+                while (r >= 0 && r < 8 && c >= 0 && c < 8) {
+                    if (b[r][c] === "empty") moves.push({ from: {r: row, c: col}, to: {r, c} }); else break; r += dr; c += dc;
+                }
+            } else {
+                const nR = row + dr, nC = col + dc;
+                if (nR >= 0 && nR < 8 && nC >= 0 && nC < 8 && b[nR][nC] === "empty") moves.push({ from: {r: row, c: col}, to: {r, c} });
+            }
+        }
+        return moves;
     }
 
     window.invite = function(id) {
@@ -482,7 +1040,7 @@
     db.ref('invites/' + userId).on('value', (snap) => {
         const inv = snap.val();
         if (inv && !inGame && inv.ts > sessionStartTime) {
-            if (confirm(inv.fromName + " taklif qildi. Qabul qilasizmi?")) {
+            if (confirm(inv.fromName + " " + LOCALES[currentLang].inviteSent)) {
                 db.ref('invites/' + userId).remove();
                 startGame(inv.gameId, 'black', inv.fromId);
             }
@@ -491,26 +1049,29 @@
 
     db.ref('presence').on('value', (snap) => {
         const list = document.getElementById('online-list');
-        list.innerHTML = '';
+        list.innerHTML = ''; let onlineCount = 0;
         snap.forEach(c => {
-            if (c.key !== userId && c.val().online && !c.val().inGame)
-                list.innerHTML += `<div class="user-item"><span>👤 ${c.val().name}</span> <button class="invite-btn" onclick="invite('${c.key}')">🎮 Taklif</button></div>`;
+            if (c.key !== userId && c.val().online && !c.val().inGame) {
+                onlineCount++;
+                list.innerHTML += `<div class="user-item"><span>👤 ${c.val().name}</span> <button class="invite-btn" onclick="invite('${c.key}')">${LOCALES[currentLang].invite}</button></div>`;
+            }
         });
+        if (onlineCount === 0) {
+            list.innerHTML = `<div style="text-align:center; padding:15px; color:#aaa;">${LOCALES[currentLang].noOnline}</div>
+            <button class="btn" style="width:100%; margin:0; background:#2ecc71; color:white;" onclick="startGame('bot_${Date.now()}', 'white', 'bot')">${LOCALES[currentLang].botBtn}</button>`;
+        }
     });
 
     function stopLobbyMusic() {
         const lobbyMusic = document.getElementById('lobby-music');
-        lobbyMusic.pause();
-        lobbyMusic.currentTime = 0;
-        musicStarted = false;
+        lobbyMusic.pause(); lobbyMusic.currentTime = 0; musicStarted = false;
     }
 
     let musicStarted = false;
     function handleInteraction() {
         if (!musicStarted && !inGame) {
             const lobbyMusic = document.getElementById('lobby-music');
-            lobbyMusic.play().catch(() => {});
-            musicStarted = true;
+            lobbyMusic.play().catch(() => {}); musicStarted = true;
         }
     }
 </script>
