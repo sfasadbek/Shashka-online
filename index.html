@@ -202,7 +202,6 @@
     const tg = window.Telegram.WebApp;
     tg.expand();
 
-    // Chiqish muammosini hal qiluvchi funksiya
     function closeTelegramApp() {
         if (window.Telegram && window.Telegram.WebApp) {
             window.Telegram.WebApp.close();
@@ -249,6 +248,8 @@
             inviteSent: "taklif qildi. Qabul qilasizmi?",
             authCancel: "Kirish bekor qilindi.",
             authFail: "Login yoki parol noto'g'ri!",
+            timeOutLoss: "Vaqt tugadi! Siz mag'lub bo'ldingiz.",
+            timeOutWin: "Raqibning vaqti tugadi! Siz yutdingiz.",
             ranks: [
                 { min: 0, name: "Yangi o'yinchi", icon: "🌱" },
                 { min: 10, name: "Havaskor", icon: "🥉" },
@@ -293,6 +294,8 @@
             inviteSent: "invited you. Do you accept?",
             authCancel: "Login canceled.",
             authFail: "Incorrect login or password!",
+            timeOutLoss: "Time out! You lost.",
+            timeOutWin: "Opponent time out! You won.",
             ranks: [
                 { min: 0, name: "New Player", icon: "🌱" },
                 { min: 10, name: "Amateur", icon: "🥉" },
@@ -337,6 +340,8 @@
             inviteSent: "пригласил вас. Принять?",
             authCancel: "Вход отменен.",
             authFail: "Неверный логин или пароль!",
+            timeOutLoss: "Время истекло! Вы проиграли.",
+            timeOutWin: "Время соперника истекло! Вы выиграли.",
             ranks: [
                 { min: 0, name: "Новый игрок", icon: "🌱" },
                 { min: 10, name: "Любитель", icon: "🥉" },
@@ -374,7 +379,6 @@
         currentName = localStorage.getItem('shashka_username') || "";
     }
 
-    // SAVED QURILMA MODELINI ANIQLASH FUNKSIYASI
     function getDeviceModel() {
         const ua = navigator.userAgent;
         if (/Android/i.test(ua)) {
@@ -392,7 +396,6 @@
         return "Noma'lum qurilma";
     }
 
-    // ADMIN TIZIMI MODALLARI
     function openAdminAuthModal() {
         document.getElementById('admin-auth-modal').style.display = 'flex';
     }
@@ -444,7 +447,6 @@
         }
     }
 
-    // TAHRIRLASH MODALI FUNKSIYALARI
     function openEditNameModal() {
         document.getElementById('edit-name-input').value = currentName;
         document.getElementById('edit-name-modal').style.display = 'flex';
@@ -472,8 +474,6 @@
         currentLang = lang;
         localStorage.setItem('shashka_lang', lang);
         document.getElementById('lang-setup-modal').style.display = 'none';
-        
-        // Til tanlangandan keyin progress panelini yoqish
         startLoading();
     }
 
@@ -533,7 +533,6 @@
         }, 20);
     }
 
-    // SAHIFA YUKLANGANDA BIRINCHI NAVBATDA TIL TEKSHIRILADI
     window.onload = function() {
         if (!localStorage.getItem('shashka_lang')) {
             document.getElementById('lang-setup-modal').style.display = 'flex';
@@ -606,11 +605,11 @@
             document.getElementById('turn-timer').innerText = LOCALES[currentLang].time + secondsLeft;
             if (secondsLeft <= 0) {
                 clearInterval(moveTimerInterval);
+                // Kimning navbatida vaqt tugasa, o'sha o'yinchi mag'lub bo'ladi
                 if (turn === myRole) {
-                    selected = null; mustJumpAgain = false;
-                    turn = (turn === 'white') ? 'black' : 'white';
-                    updateFirebase(false); render(); startMoveTimer();
-                    if (isBotGame && turn === 'black') setTimeout(makeBotMove, 400);
+                    finishGame(false, LOCALES[currentLang].timeOutLoss);
+                } else {
+                    finishGame(true, LOCALES[currentLang].timeOutWin);
                 }
             }
         }, 1000);
@@ -872,13 +871,13 @@
             let caps = getCaptureMoves(selected.r, selected.c, board[selected.r][selected.c]);
             if (caps.length > 0) {
                 const move = caps[Math.floor(Math.random() * caps.length)];
-                executeMove(move.from.r, move.from.c, move.to.r !== undefined ? move.to.r : move.to.nR, move.to.c !== undefined ? move.to.c : move.to.nC, move.captured);
+                executeMove(move.from.r, move.from.c, move.to.r, move.to.c, move.captured);
                 return;
             }
         }
-        let bestMove = minimaxDecision(board, 4); // Chuqurlik optimal qiymatga tushirildi
+        let bestMove = minimaxDecision(board, 4);
         if (bestMove) {
-            executeMove(bestMove.from.r, bestMove.from.c, bestMove.to.r !== undefined ? bestMove.to.r : bestMove.to.nR, bestMove.to.c !== undefined ? bestMove.to.c : bestMove.to.nC, bestMove.captured || null);
+            executeMove(bestMove.from.r, bestMove.from.c, bestMove.to.r, bestMove.to.c, bestMove.captured || null);
         } else { checkGameEndStatus(); }
     }
 
@@ -979,8 +978,8 @@
             }
         }
         let fromR = move.from.r, fromC = move.from.c;
-        let targetR = move.to.r !== undefined ? move.to.r : move.to.nR;
-        let targetC = move.to.c !== undefined ? move.to.c : move.to.nC;
+        let targetR = move.to.r;
+        let targetC = move.to.c;
         let p = newB[fromR][fromC];
         if (move.captured) newB[move.captured.r][move.captured.c] = "empty";
         newB[targetR][targetC] = p; newB[fromR][fromC] = "empty";
@@ -1032,7 +1031,7 @@
                 }
             } else {
                 const nR = row + dr, nC = col + dc;
-                if (nR >= 0 && nR < 8 && nC >= 0 && nC < 8 && b[nR][nC] === "empty") moves.push({ from: {r: row, c: col}, to: {r, c} });
+                if (nR >= 0 && nR < 8 && nC >= 0 && nC < 8 && b[nR][nC] === "empty") moves.push({ from: {r: row, c: col}, to: {r: nR, c: nC} });
             }
         }
         return moves;
