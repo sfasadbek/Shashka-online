@@ -1126,7 +1126,7 @@
         for (let [dr, dc] of dirs) {
             if (piece.king) {
                 let r = row + dr, c = col + dc;
-                while (r >= 0 && r < 8 && c >= 8 ? false : c >= 0) {
+                while (r >= 0 && r < 8 && c >= 0 && c < 8) {
                     if (b[r][c] === "empty") {
                         moves.push({ from: {r: row, c: col}, to: {r: r, c: c} });
                     } else break; 
