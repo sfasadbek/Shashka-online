@@ -9,6 +9,23 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
     <style>
+        /* --- LONG PRESS & COPY PREVENTION --- */
+        body, *, .piece, .cell, .btn, .rules-text, .modal-content, p, h1, h2, h3, div {
+            -webkit-touch-callout: none; /* iOS Safari uzoq bosgandagi menyu */
+            -webkit-user-select: none;   /* Safari */
+            -khtml-user-select: none;     /* Konqueror HTML */
+            -moz-user-select: none;        /* Firefox */
+            -ms-user-select: none;         /* Internet Explorer/Edge */
+            user-select: none;             /* Standart */
+        }
+        
+        input, textarea {
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text; /* Inputlar yozish uchun faol qoladi */
+        }
+
         /* --- LOADING PROGRESS BAR CSS --- */
         #loading-screen {
             display: none; /* Avval til tanlanadi, keyin blok ochiladi */
@@ -112,7 +129,7 @@
         .rules-text { text-align: left; font-size: 14px; line-height: 1.5; max-height: 40vh; overflow-y: auto; background: #1a1a1a; padding: 15px; border-radius: 10px; border: 1px solid #444; margin: 15px 0; }
     </style>
 </head>
-<body onclick="handleInteraction()"> 
+<body onclick="handleInteraction()" oncontextmenu="return false;"> 
 
 <div id="tg-blocker">
     <h1 style="color: #e74c3c; font-size: 28px; margin-bottom: 15px;">⚠️ CHЕKLOV / RESTRICTION</h1>
@@ -295,7 +312,7 @@
             timeOutLoss: "Vaqtingiz tugadi! Siz mag'lub bo'ldingiz.",
             timeOutWin: "Raqibning vaqti tugadi! Siz yutdingiz.",
             rulesTitle: "❓ O'yin qoidalari",
-            rulesText: "1. O'yin to'q rangli kataklarda diagonal bo'ylab diagonal harakatlar bilan o'ynaladi.<br><br>2. Oddiy toshlar faqat oldinga qarab bir katak yura oladi.<br><br>3. Agar raqib toshini yeyish imkoniyati bo'lsa, yeyish MAJBURIYDIR.<br><br>4. Tosh raqib ustidan sakrab o'tib uni yeydi va ketma-ket bir nechta toshni yeyish imkoniyati bo'lsa, sakrashni davom ettiradi.<br><br>5. Doskaning qarama-qarshi chetiga yetib borgan tosh 'Damka' (👑) ga aylanadi. Damka istalgan masofaga oldinga va orqaga diagonal yura oladi.<br><br>6. Har bir o'yinchiga o'yin boshida 10 daqiqa vaqt beriladi. Vaqti tugagan yoki barcha toshlaridan ayrilgan o'yinchi mag'lub hisoblanadi.",
+            rulesText: "1. O'yin to'q rangli kataklarda diagonal bo'ylab diagonal harakatlar bilan o'ynaladi.<br><br>2. Oddiy toshlar faqat oldinga qarab bir katak yura oladi.<br><br>3. Agar raqib toshini yeyish imkoniyati bo'lsa, yeyish majburiy emas.<br><br>4. Tosh raqib ustidan sakrab o'tib uni yeydi va ketma-ket bir nechta toshni yeyish imkoniyati bo'lsa, sakrashni davom ettiradi.<br><br>5. Doskaning qarama-qarshi chetiga yetib borgan tosh 'Damka' (👑) ga aylanadi. Damka istalgan masofaga oldinga va orqaga diagonal yura oladi.<br><br>6. Har bir o'yinchiga o'yin boshida 10 daqiqa vaqt beriladi. Vaqti tugagan yoki balla toshlaridan ayrilgan o'yinchi mag'lub hisoblanadi.",
             ranks: [
                 { min: 0, name: "Yangi o'yinchi", icon: "🌱" },
                 { min: 10, name: "Havaskor", icon: "🥉" },
@@ -342,7 +359,7 @@
             timeOutLoss: "Time out! You lost.",
             timeOutWin: "Opponent time out! You won.",
             rulesTitle: "❓ Game Rules",
-            rulesText: "1. The game is played on dark squares only, moving diagonally.<br><br>2. Ordinary pieces can only move forward one square at a time.<br><br>3. Capturing an opponent's piece is MANDATORY if available.<br><br>4. Jumps can be chained if multiple captures are possible in a single turn.<br><br>5. Reaching the furthest row promotes a piece to a 'King' (👑). Kings can move any distance diagonally, both forward and backward.<br><br>6. Each player starts with 10 minutes. Running out of time or losing all pieces results in a loss.",
+            rulesText: "1. The game is played on dark squares only, moving diagonally.<br><br>2. Ordinary pieces can only move forward one square at a time.<br><br>3. Capturing an opponent's piece is not mandatory.<br><br>4. Jumps can be chained if multiple captures are possible in a single turn.<br><br>5. Reaching the furthest row promotes a piece to a 'King' (👑). Kings can move any distance diagonally, both forward and backward.<br><br>6. Each player starts with 10 minutes. Running out of time or losing all pieces results in a loss.",
             ranks: [
                 { min: 0, name: "New Player", icon: "🌱" },
                 { min: 10, name: "Amateur", icon: "🥉" },
@@ -389,7 +406,7 @@
             timeOutLoss: "Время истекло! Вы проиграли.",
             timeOutWin: "Время соперника истекло! Вы выиграли.",
             rulesTitle: "❓ Правила игры",
-            rulesText: "1. Игра ведется только по темным клеткам по диагонали.<br><br>2. Обычные шашки ходят только вперед на одну клетку.<br><br>3. Взятие шашки соперника ОБЯЗАТЕЛЬНО, если оно возможно.<br><br>4. Если возможна серия взятий, игрок обязан продолжить прыжки в том же ходу.<br><br>5. При достижении противоположного края доски шашка становится 'Дамкой' (👑). Дамка может ходить на любое расстояние по диагонали, как вперед, так и назад.<br><br>6. Каждому игроку дается 10 минут на партию. Игрок, у которого закончилось время или не осталось шашек, проигрывает.",
+            rulesText: "1. Игра ведется только по темным клеткам по диагонали.<br><br>2. Обычные шашки ходят только вперед на одну клетку.<br><br>3. Взятие шашки соперника не обязательно.<br><br>4. Если возможна серия взятий, игрок обязан продолжить прыжки в том же ходу.<br><br>5. При достижении противоположного края доски шашка становится 'Дамкой' (👑). Дамка может ходить на любое расстояние по диагонали, как вперед, так и назад.<br><br>6. Каждому иголку дается 10 минут на партию. Игрок, у которого закончилось время или не осталось шашек, проигрывает.",
             ranks: [
                 { min: 0, name: "Новый игрок", icon: "🌱" },
                 { min: 10, name: "Любитель", icon: "🥉" },
