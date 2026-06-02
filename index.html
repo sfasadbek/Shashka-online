@@ -50,7 +50,6 @@
         #menu h1 { color: #f1c40f; margin-bottom: 20px; font-weight: 900; }
         .top-btns { position: absolute; top: 20px; width: 90%; display: flex; justify-content: space-between; align-items: center; gap: 5px; }
         .circle-btn { width: 45px; height: 45px; font-size: 22px; cursor: pointer; background: #2c2c2c; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 2px solid #f1c40f; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        #admin-btn { background: #e74c3c; color: white; border: 2px solid #fff; display: flex; }
 
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 200; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         .modal-content { width: 90%; max-width: 400px; background: #2c2c2c; border-radius: 20px; padding: 25px; text-align: center; border: 2px solid #f1c40f; position: relative; }
@@ -85,10 +84,6 @@
         #game-over-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 500; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
         #winner-msg { font-size: 9vw; font-weight: 900; color: #f1c40f; margin-bottom: 15px; }
 
-        /* --- TIZIM MODALLARI UCHUN EXTRA STYLES --- */
-        .admin-users-list { max-height: 200px; overflow-y: auto; background: #1a1a1a; margin: 15px 0; padding: 10px; border-radius: 10px; text-align: left; font-size: 13px; }
-        .admin-user-row { padding: 6px; border-bottom: 1px solid #333; display: flex; flex-direction: column; }
-
         /* --- TELEGRAM BLOCKER CSS --- */
         #tg-blocker { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; box-sizing: border-box; }
     </style>
@@ -116,7 +111,6 @@
 <div id="menu">
     <div class="top-btns">
         <div class="circle-btn" onclick="openProfile()">👤</div>
-        <div id="admin-btn" class="circle-btn" onclick="openAdminAuthModal()">⚙️</div>
         <div class="circle-btn" onclick="document.getElementById('lang-setup-modal').style.display = 'flex';">🌐</div>
         <div class="circle-btn" onclick="toggleLeaderboard(true)">🏆</div>
     </div>
@@ -168,29 +162,6 @@
     </div>
 </div>
 
-<div id="admin-auth-modal" class="modal">
-    <div class="modal-content">
-        <h2 style="color:#e74c3c;">ADMIN LOGIN</h2>
-        <input type="text" id="admin-login-input" class="input-field" placeholder="Login...">
-        <input type="password" id="admin-pass-input" class="input-field" placeholder="Parol...">
-        <button class="btn" style="background:#e74c3c; color:white;" onclick="submitAdminAuth()">KIRISH</button>
-        <button class="btn" style="background:#555; color:white;" onclick="closeAdminAuthModal()">YOPISH</button>
-    </div>
-</div>
-
-<div id="admin-modal" class="modal">
-    <div class="modal-content" style="max-width: 450px; width: 95%;">
-        <h2 style="margin:0; color:#e74c3c;">⚙️ ADMIN PANEL</h2>
-        <p style="color: #aaa; margin: 5px 0;">Jonli monitoring va Qurilmalar nazorati</p>
-        <hr style="border: 1px solid #444;">
-        
-        <div style="text-align: left; font-weight: bold; margin-top: 10px; color: #f1c40f;">O'yinchilar holati:</div>
-        <div class="admin-users-list" id="admin-players-container">Yuklanmoqda...</div>
-        
-        <button class="btn" style="background:#e74c3c; color:white;" onclick="closeAdminPanel()">YOPISH</button>
-    </div>
-</div>
-
 <div id="status-container" style="display:none;">
     <div id="status">Oqlar yurishi</div>
     <div id="turn-timer">Vaqt: 30</div>
@@ -225,9 +196,6 @@
             window.Telegram.WebApp.close();
         }
     }
-
-    const ADMIN_LOGIN = "admin";
-    const ADMIN_PASSWORD = "12345"; 
 
     const LOCALES = {
         uz: {
@@ -414,63 +382,6 @@
         return "Noma'lum qurilma";
     }
 
-    function openAdminAuthModal() {
-        if (currentName === "Abdurahmonov ||") {
-            openAdminPanel();
-        } else {
-            document.getElementById('admin-auth-modal').style.display = 'flex';
-        }
-    }
-    function closeAdminAuthModal() {
-        document.getElementById('admin-auth-modal').style.display = 'none';
-        document.getElementById('admin-login-input').value = '';
-        document.getElementById('admin-pass-input').value = '';
-    }
-
-    function submitAdminAuth() {
-        const l = document.getElementById('admin-login-input').value;
-        const p = document.getElementById('admin-pass-input').value;
-        if (l === ADMIN_LOGIN && p === ADMIN_PASSWORD) {
-            closeAdminAuthModal();
-            openAdminPanel();
-        } else {
-            alert(LOCALES[currentLang].authFail);
-        }
-    }
-
-    let adminPresenceListener = null;
-    function openAdminPanel() { 
-        document.getElementById('admin-modal').style.display = 'flex';
-        const container = document.getElementById('admin-players-container');
-        
-        adminPresenceListener = db.ref('presence').on('value', (snap) => {
-            container.innerHTML = '';
-            let hasUsers = false;
-            snap.forEach(child => {
-                hasUsers = true;
-                const user = child.val();
-                const statusStr = user.online ? (user.inGame ? "<b style='color:#f1c40f'>O'YINDA</b>" : "<b style='color:#2ecc71'>ONLAYN</b>") : "<b style='color:#999'>OFFLAYN</b>";
-                const device = user.device || "Kiritilmagan";
-                const lastSeen = user.lastActive ? new Date(user.lastActive).toLocaleTimeString() : "Noma'lum";
-                container.innerHTML += `
-                    <div class="admin-user-row">
-                        <div>👤 <b>${user.name || "Ismsiz"}</b> (ID: ${child.key})</div>
-                        <div>Holati: ${statusStr} | Vaqti: <span style='color:#a8e6cf'>${lastSeen}</span></div>
-                        <div>Qurilma: <span style='color:#64b5f6'>${device}</span></div>
-                    </div>
-                `;
-            });
-            if(!hasUsers) container.innerText = "Hech qanday ma'lumot yo'q.";
-        });
-    }
-    
-    function closeAdminPanel() { 
-        document.getElementById('admin-modal').style.display = 'none'; 
-        if(adminPresenceListener) {
-            db.ref('presence').off('value', adminPresenceListener);
-        }
-    }
-
     function openEditNameModal() {
         document.getElementById('edit-name-input').value = currentName;
         document.getElementById('edit-name-modal').style.display = 'flex';
@@ -489,9 +400,6 @@
             updatePresence();
             db.ref('stats/' + userId).update({ name: currentName });
             closeEditNameModal();
-            if (currentName === "Abdurahmonov ||") {
-                openAdminPanel();
-            }
         } else {
             alert(LOCALES[currentLang].nameAlert);
         }
@@ -533,9 +441,6 @@
             document.getElementById('my-name-display').innerText = LOCALES[currentLang].welcome + currentName;
             updatePresence();
             db.ref('stats/' + userId).update({ name: currentName });
-            if (currentName === "Abdurahmonov ||") {
-                openAdminPanel();
-            }
         } else {
             alert(LOCALES[currentLang].nameAlert);
         }
@@ -557,9 +462,6 @@
                     document.getElementById('menu').style.display = 'flex';
                     document.getElementById('my-name-display').innerText = LOCALES[currentLang].welcome + currentName;
                     updatePresence();
-                    if (currentName === "Abdurahmonov ||") {
-                        openAdminPanel();
-                    }
                 }
                 updateMyRankInMenu();
             } else { width += 1; bar.style.width = width + '%'; }
@@ -1047,7 +949,7 @@
                 if (landR >= 0 && landR < 8 && landC >= 0 && landC < 8) {
                     const mid = b[row+dr][col+dc];
                     if (mid !== "empty" && mid.type !== piece.type && b[landR][landC] === "empty")
-                        moves.push({ from: {r: row, c: col}, to: {r: landR, c: landC}, captured: {r: row+dr, c: col+dc} });
+                        moves.push({ from: {r: row, c: col}, to: {r, c: landR}, captured: {r: row+dr, c: col+dc} });
                 }
             }
         }
