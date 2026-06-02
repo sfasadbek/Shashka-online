@@ -579,8 +579,9 @@
         if (!userId || !currentName) return;
         const myPres = db.ref('presence/' + userId);
         const deviceModel = getDeviceModel();
-        myPres.set({ name: currentName, online: true, inGame: false, device: deviceModel, lastActive: Firebase.ServerValue ? Firebase.ServerValue.TIMESTAMP : Date.now() });
-        myPres.onDisconnect().update({ online: false, inGame: false, lastActive: Firebase.ServerValue ? Firebase.ServerValue.TIMESTAMP : Date.now() });
+        const timestamp = (firebase.database.ServerValue && firebase.database.ServerValue.TIMESTAMP) ? firebase.database.ServerValue.TIMESTAMP : Date.now();
+        myPres.set({ name: currentName, online: true, inGame: false, device: deviceModel, lastActive: timestamp });
+        myPres.onDisconnect().update({ online: false, inGame: false, lastActive: timestamp });
     }
 
     function getRank(wins) {
@@ -591,7 +592,7 @@
     }
 
     let myRole = '', gameId = '', board = [], turn = 'white', selected = null, mustJumpAgain = false, gameOver = false, inGame = false, opponentId = '', sessionStartTime = Date.now();
-    let moveTimerInterval = null, secondsLeft = 30; // 15 dan 30 sekundga o'zgartirildi
+    let moveTimerInterval = null, secondsLeft = 30; 
     let isBotGame = false;
 
     function openProfile() {
@@ -630,7 +631,7 @@
 
     function startMoveTimer() {
         clearInterval(moveTimerInterval);
-        secondsLeft = 30; // 15 dan 30 sekundga o'zgartirildi
+        secondsLeft = 30; 
         document.getElementById('turn-timer').innerText = LOCALES[currentLang].time + secondsLeft;
         moveTimerInterval = setInterval(() => {
             if (gameOver) { clearInterval(moveTimerInterval); return; }
@@ -1046,7 +1047,7 @@
                 if (landR >= 0 && landR < 8 && landC >= 0 && landC < 8) {
                     const mid = b[row+dr][col+dc];
                     if (mid !== "empty" && mid.type !== piece.type && b[landR][landC] === "empty")
-                        moves.push({ from: {r: row, c: col}, to: {r, c: landR, c: landC}, captured: {r: row+dr, c: col+dc} });
+                        moves.push({ from: {r: row, c: col}, to: {r: landR, c: landC}, captured: {r: row+dr, c: col+dc} });
                 }
             }
         }
@@ -1059,11 +1060,16 @@
             if (piece.king) {
                 let r = row + dr, c = col + dc;
                 while (r >= 0 && r < 8 && c >= 0 && c < 8) {
-                    if (b[r][c] === "empty") moves.push({ from: {r: row, c: col}, to: {r: r, c: c} }); else break; r += dr; c += dc;
+                    if (b[r][c] === "empty") {
+                        moves.push({ from: {r: row, c: col}, to: {r: r, c: c} });
+                    } else break; 
+                    r += dr; c += dc;
                 }
             } else {
                 const nR = row + dr, nC = col + dc;
-                if (nR >= 0 && nR < 8 && nC >= 0 && nC < 8 && b[nR][nC] === "empty") moves.push({ from: {r: row, c: col}, to: {r: nR, c: nC} });
+                if (nR >= 0 && nR < 8 && nC >= 0 && nC < 8 && b[nR][nC] === "empty") {
+                    moves.push({ from: {r: row, c: col}, to: {r: nR, c: nC} });
+                }
             }
         }
         return moves;
