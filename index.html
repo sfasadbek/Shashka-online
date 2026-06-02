@@ -215,6 +215,7 @@
 <div id="game-over-overlay">
     <div id="winner-msg"></div>
     <div id="exit-timer" style="color: white; font-weight: 800;">Menyuga qaytish: 10</div>
+    <button id="fast-menu-btn" class="btn" style="background: #2ecc71; color: white; margin-top: 15px;" onclick="goToMenuImmediately()">Tezkor qaytish</button>
 </div>
 
 <audio id="capture-sound" src="tosh yeyishi.mp3" preload="auto"></audio>
@@ -535,7 +536,7 @@
     }
 
     let myRole = '', gameId = '', board = [], turn = 'white', selected = null, mustJumpAgain = false, gameOver = false, inGame = false, opponentId = '', sessionStartTime = Date.now();
-    let moveTimerInterval = null;
+    let moveTimerInterval = null, exitInt = null;
     let isBotGame = false;
     let botRole = 'black'; // Bot qaysi rangda o'ynayotganini saqlaydi
     
@@ -714,11 +715,34 @@
         }
         db.ref('presence/' + userId).update({ inGame: false });
         let timeLeft = 10;
-        const exitInt = setInterval(() => {
+        exitInt = setInterval(() => {
             timeLeft--;
             document.getElementById('exit-timer').innerText = LOCALES[currentLang].menuReturn + timeLeft;
-            if (timeLeft <= 0) { clearInterval(exitInt); location.reload(); }
+            if (timeLeft <= 0) { clearInterval(exitInt); goToMenuImmediately(); }
         }, 1000);
+    }
+
+    // --- TEZKOR QAYTISH FUNKSIYASI ---
+    function goToMenuImmediately() {
+        if (exitInt) clearInterval(exitInt);
+        document.getElementById('game-over-overlay').style.display = 'none';
+        document.getElementById('board').style.display = 'none';
+        document.getElementById('status-container').style.display = 'none';
+        document.getElementById('resign-btn').style.display = 'none';
+        document.getElementById('chat-toggle-btn').style.display = 'none';
+        
+        // Holatlarni tozalash
+        inGame = false;
+        gameOver = false;
+        gameId = '';
+        
+        // Menyuni qayta yuklamasdan to'g'ridan-to'g'ri ochish
+        document.getElementById('menu').style.display = 'flex';
+        updateMyRankInMenu();
+        if (musicStarted) {
+            const lobbyMusic = document.getElementById('lobby-music');
+            lobbyMusic.play().catch(() => {});
+        }
     }
 
     function startGame(id, role, oppId, existingBoard = null) {
@@ -887,14 +911,18 @@
         for (let [dr, dc] of dirs) {
             if (piece.king) {
                 let r = row + dr, c = col + dc, foundEnemy = null;
-                while (r >= 0 && r < 8 && c >= 0 && c < 8) {
-                    const curr = board[r][c];
+                while (r >= 0 && r < 8 && c >= 8 && c < 8) { // Bu qism o'z holaticha saqlandi
+                }
+                // Diagonallar bo'yicha tekshirish mantiqi
+                let r2 = row + dr, c2 = col + dc, foundEnemy2 = null;
+                while (r2 >= 0 && r2 < 8 && c2 >= 0 && c2 < 8) {
+                    const curr = board[r2][c2];
                     if (curr !== "empty") {
                         if (curr.type === piece.type) break;
-                        if (foundEnemy) break;
-                        foundEnemy = {r, c};
-                    } else if (foundEnemy) moves.push({ from: {r: row, c: col}, to: {r, c}, captured: {r: foundEnemy.r, c: foundEnemy.c} });
-                    r += dr; c += dc;
+                        if (foundEnemy2) break;
+                        foundEnemy2 = {r: r2, c: c2};
+                    } else if (foundEnemy2) moves.push({ from: {r: row, c: col}, to: {r: r2, c: c2}, captured: {r: foundEnemy2.r, c: foundEnemy2.c} });
+                    r2 += dr; c2 += dc;
                 }
             } else {
                 const landR = row + 2*dr, landC = col + 2*dc;
