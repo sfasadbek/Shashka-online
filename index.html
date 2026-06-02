@@ -88,9 +88,18 @@
         /* --- TIZIM MODALLARI UCHUN EXTRA STYLES --- */
         .admin-users-list { max-height: 200px; overflow-y: auto; background: #1a1a1a; margin: 15px 0; padding: 10px; border-radius: 10px; text-align: left; font-size: 13px; }
         .admin-user-row { padding: 6px; border-bottom: 1px solid #333; display: flex; flex-direction: column; }
+
+        /* --- TELEGRAM BLOCKER CSS --- */
+        #tg-blocker { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; box-sizing: border-box; }
     </style>
 </head>
 <body onclick="handleInteraction()"> 
+
+<div id="tg-blocker">
+    <h1 style="color: #e74c3c; font-size: 28px; margin-bottom: 15px;">⚠️ CHЕKLOV / RESTRICTION</h1>
+    <p style="font-size: 18px; line-height: 1.6;">Ushbu o'yin faqat <b>Telegram</b> ilovasi ichida ishlashga mo'ljallangan!<br>Iltimos, o'yinni Telegram bot orqali ishga tushiring.</p>
+    <p style="color: #aaa; margin-top: 20px; font-size: 14px;">This game only works inside the Telegram App.<br>Эта игра работает только внутри Telegram.</p>
+</div>
 
 <div id="loading-screen">
     <div id="loading-text">YUKLANMOQDA...</div>
@@ -184,7 +193,7 @@
 
 <div id="status-container" style="display:none;">
     <div id="status">Oqlar yurishi</div>
-    <div id="turn-timer">Vaqt: 15</div>
+    <div id="turn-timer">Vaqt: 30</div>
 </div>
 <div id="board" style="display:none;"></div>
 <button id="resign-btn" onclick="resignGame()">🏳️ Taslim bo'lish</button>
@@ -201,6 +210,14 @@
 
 <script>
     const tg = window.Telegram.WebApp;
+    
+    // Telegram tekshiruvi: Agar Telegram muhiti aniqlanmasa sahifani bloklash
+    if (!tg || !tg.initData || tg.initData === "") {
+        document.getElementById('tg-blocker').style.display = 'flex';
+        if(document.getElementById('lang-setup-modal')) document.getElementById('lang-setup-modal').style.display = 'none';
+        throw new Error("O'yin faqat Telegram ichida ishlaydi!");
+    }
+
     tg.expand();
 
     function closeTelegramApp() {
@@ -559,7 +576,7 @@
     }
 
     let myRole = '', gameId = '', board = [], turn = 'white', selected = null, mustJumpAgain = false, gameOver = false, inGame = false, opponentId = '', sessionStartTime = Date.now();
-    let moveTimerInterval = null, secondsLeft = 15;
+    let moveTimerInterval = null, secondsLeft = 30; // 15 dan 30 sekundga o'zgartirildi
     let isBotGame = false;
 
     function openProfile() {
@@ -598,7 +615,7 @@
 
     function startMoveTimer() {
         clearInterval(moveTimerInterval);
-        secondsLeft = 15;
+        secondsLeft = 30; // 15 dan 30 sekundga o'zgartirildi
         document.getElementById('turn-timer').innerText = LOCALES[currentLang].time + secondsLeft;
         moveTimerInterval = setInterval(() => {
             if (gameOver) { clearInterval(moveTimerInterval); return; }
