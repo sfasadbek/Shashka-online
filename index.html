@@ -64,9 +64,11 @@
         .user-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #444; align-items: center; }
         .invite-btn { background: #2ecc71; color: white; border: none; padding: 7px 12px; border-radius: 5px; cursor: pointer; font-weight: 900; }
         
-        #status-container { display: flex; flex-direction: column; align-items: center; margin-bottom: 10px; }
-        #status { font-size: 5vw; font-weight: 900; text-transform: uppercase; text-align: center; background: #2c2c2c; padding: 10px 25px; border-radius: 30px; min-width: 220px; border: 2px solid #444; }
-        #turn-timer { font-size: 5vw; color: #f1c40f; margin-top: 5px; font-weight: 900; }
+        #status-container { display: flex; flex-direction: column; align-items: center; margin-bottom: 10px; width: 100%; }
+        #status { font-size: 4.5vw; font-weight: 900; text-transform: uppercase; text-align: center; background: #2c2c2c; padding: 8px 20px; border-radius: 30px; min-width: 200px; border: 2px solid #444; }
+        #clocks-container { display: flex; justify-content: space-around; width: 95vw; max-width: 450px; margin-top: 8px; font-family: monospace; font-size: 4vw; font-weight: 900; }
+        .clock-box { background: #2c2c2c; padding: 5px 12px; border-radius: 8px; border: 1px solid #555; min-width: 110px; text-align: center; }
+        .active-clock { border-color: #f1c40f; color: #f1c40f; box-shadow: 0 0 8px rgba(241, 196, 15, 0.4); }
         
         #board { width: 95vw; height: 95vw; max-width: 450px; max-height: 450px; border: 6px solid #3e2723; display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); transition: transform 0.5s; background-color: #d7ccc8; }
         .rotate-board { transform: rotate(180deg); }
@@ -80,9 +82,28 @@
         .black-piece { background: radial-gradient(circle, #3a3a3a, #1a1a1a); border: 2px solid #333; }
         .selected { transform: scale(1.1); box-shadow: 0 0 15px #ffeb3b; border: 3px solid #ffeb3b; }
         .king::after { content: '👑'; font-size: 6vw; }
-        #resign-btn { margin-top: 20px; background: #e74c3c; color: white; display: none; padding: 12px 25px; border-radius: 12px; border: none; font-weight: 900; cursor: pointer; }
+        
+        /* O'yin ostidagi boshqaruv tugmalari paneli */
+        .game-controls { display: flex; gap: 10px; width: 95vw; max-width: 450px; margin-top: 15px; }
+        #resign-btn { flex: 1; display: none; background: #e74c3c; color: white; padding: 12px; border-radius: 12px; border: none; font-weight: 900; cursor: pointer; text-transform: uppercase; }
+        #chat-toggle-btn { flex: 1; display: none; background: #3498db; color: white; padding: 12px; border-radius: 12px; border: none; font-weight: 900; cursor: pointer; text-transform: uppercase; }
+        
+        /* Chat modali */
+        #chat-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 600; flex-direction: column; justify-content: flex-end; }
+        .chat-container { background: #2c2c2c; width: 100%; max-height: 70vh; border-top-left-radius: 20px; border-top-right-radius: 20px; display: flex; flex-direction: column; border-top: 3px solid #3498db; }
+        .chat-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid #444; font-weight: 900; color: #3498db; }
+        .chat-close { cursor: pointer; font-size: 20px; color: white; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; max-height: 40vh; min-height: 250px; }
+        .chat-msg { max-width: 75%; padding: 8px 14px; border-radius: 15px; font-size: 14px; word-break: break-word; line-height: 1.4; }
+        .msg-my { background: #3498db; color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .msg-opp { background: #444; color: white; align-self: flex-start; border-bottom-left-radius: 2px; }
+        .msg-sender { font-size: 11px; color: #f1c40f; margin-bottom: 2px; display: block; font-weight: bold; }
+        .chat-input-area { display: flex; padding: 10px; gap: 8px; border-top: 1px solid #444; background: #1a1a1a; }
+        .chat-input { flex: 1; background: #2c2c2c; border: 1px solid #555; border-radius: 20px; padding: 10px 15px; color: white; outline: none; font-size: 15px; }
+        .chat-send-btn { background: #3498db; border: none; color: white; padding: 0 18px; border-radius: 20px; font-weight: bold; cursor: pointer; }
+
         #game-over-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 500; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        #winner-msg { font-size: 9vw; font-weight: 900; color: #f1c40f; margin-bottom: 15px; }
+        #winner-msg { font-size: 9vw; font-weight: 900; color: #f1c40f; margin-bottom: 15px; padding: 0 10px; }
 
         /* --- TELEGRAM BLOCKER CSS --- */
         #tg-blocker { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; box-sizing: border-box; }
@@ -164,10 +185,33 @@
 
 <div id="status-container" style="display:none;">
     <div id="status">Oqlar yurishi</div>
-    <div id="turn-timer">Vaqt: 30</div>
+    <div id="clocks-container">
+        <div id="clock-white" class="clock-box">Oq: 10:00</div>
+        <div id="clock-black" class="clock-box">Qora: 10:00</div>
+    </div>
 </div>
+
 <div id="board" style="display:none;"></div>
-<button id="resign-btn" onclick="resignGame()">🏳️ Taslim bo'lish</button>
+
+<div class="game-controls">
+    <button id="resign-btn" onclick="resignGame()">🏳️ Taslim bo'lish</button>
+    <button id="chat-toggle-btn" onclick="toggleChat(true)">💬 Chat</button>
+</div>
+
+<div id="chat-modal" onclick="toggleChat(false)">
+    <div class="chat-container" onclick="event.stopPropagation()">
+        <div class="chat-header">
+            <span>CHАT</span>
+            <span class="chat-close" onclick="toggleChat(false)">✕</span>
+        </div>
+        <div id="chat-messages" class="chat-messages"></div>
+        <div class="chat-input-area">
+            <input type="text" id="chat-input" class="chat-input" placeholder="Xabar yozing..." maxlength="100" onkeydown="if(event.key==='Enter') sendChatMessage()">
+            <button class="chat-send-btn" onclick="sendChatMessage()">➡️</button>
+        </div>
+    </div>
+</div>
+
 <div id="game-over-overlay">
     <div id="winner-msg"></div>
     <div id="exit-timer" style="color: white; font-weight: 800;">Menyuga qaytish: 10</div>
@@ -217,7 +261,6 @@
             invite: "🎮 Taklif",
             whiteTurn: "⚪ Oqlar yurishi",
             blackTurn: "⚫ Qoralar yurishi",
-            time: "Vaqt: ",
             resign: "🏳️ Taslim bo'lish",
             menuReturn: "Menyuga qaytish: ",
             nameAlert: "Ism kamida 3 ta harf bo'lsin!",
@@ -234,7 +277,7 @@
             inviteSent: "taklif qildi. Qabul qilasizmi?",
             authCancel: "Kirish bekor qilindi.",
             authFail: "Login yoki parol noto'g'ri!",
-            timeOutLoss: "Vaqt tugadi! Siz mag'lub bo'ldingiz.",
+            timeOutLoss: "Vaqtingiz tugadi! Siz mag'lub bo'ldingiz.",
             timeOutWin: "Raqibning vaqti tugadi! Siz yutdingiz.",
             ranks: [
                 { min: 0, name: "Yangi o'yinchi", icon: "🌱" },
@@ -263,7 +306,6 @@
             invite: "🎮 Invite",
             whiteTurn: "⚪ White's turn",
             blackTurn: "⚫ Black's turn",
-            time: "Time: ",
             resign: "🏳️ Resign",
             menuReturn: "Return to menu: ",
             nameAlert: "Name must be at least 3 characters!",
@@ -309,7 +351,6 @@
             invite: "🎮 Пригласить",
             whiteTurn: "⚪ Ход белых",
             blackTurn: "⚫ Ход черных",
-            time: "Время: ",
             resign: "🏳️ Сдаться",
             menuReturn: "Вернуться в меню: ",
             nameAlert: "Имя должно содержать не менее 3 символов!",
@@ -494,9 +535,14 @@
     }
 
     let myRole = '', gameId = '', board = [], turn = 'white', selected = null, mustJumpAgain = false, gameOver = false, inGame = false, opponentId = '', sessionStartTime = Date.now();
-    let moveTimerInterval = null, secondsLeft = 30; 
+    let moveTimerInterval = null;
     let isBotGame = false;
     let botRole = 'black'; // Bot qaysi rangda o'ynayotganini saqlaydi
+    
+    // --- YANGI: 10 minutlik (Shaxmat soati) taymer o'zgaruvchilari ---
+    let whiteTimeLeft = 600; // 10 daqiqa = 600 soniya
+    let blackTimeLeft = 600;
+    let lastClockUpdate = Date.now();
 
     function openProfile() {
         db.ref('stats/' + userId).once('value', (snap) => {
@@ -532,23 +578,54 @@
         if (sound) { sound.pause(); sound.currentTime = 0; sound.play().catch(() => {}); }
     }
 
+    // --- YANGI: Shaxmat soati formatlash funksiyasi ---
+    function formatTime(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    // --- YANGI: 10 daqiqalik global taymer boshqaruvi ---
     function startMoveTimer() {
         clearInterval(moveTimerInterval);
-        secondsLeft = 30; 
-        document.getElementById('turn-timer').innerText = LOCALES[currentLang].time + secondsLeft;
+        lastClockUpdate = Date.now();
+        
+        // Faol o'yinchining soat vizualini belgilash
+        document.getElementById('clock-white').classList.toggle('active-clock', turn === 'white');
+        document.getElementById('clock-black').classList.toggle('active-clock', turn === 'black');
+
         moveTimerInterval = setInterval(() => {
             if (gameOver) { clearInterval(moveTimerInterval); return; }
-            secondsLeft--;
-            document.getElementById('turn-timer').innerText = LOCALES[currentLang].time + secondsLeft;
-            if (secondsLeft <= 0) {
-                clearInterval(moveTimerInterval);
-                if (turn === myRole) {
-                    finishGame(false, LOCALES[currentLang].timeOutLoss);
+            
+            const now = Date.now();
+            const delta = Math.floor((now - lastClockUpdate) / 1000);
+            if (delta >= 1) {
+                if (turn === 'white') {
+                    whiteTimeLeft = Math.max(0, whiteTimeLeft - delta);
                 } else {
-                    finishGame(true, LOCALES[currentLang].timeOutWin);
+                    blackTimeLeft = Math.max(0, blackTimeLeft - delta);
+                }
+                lastClockUpdate = now;
+                
+                // Soat matnlarini yangilash
+                document.getElementById('clock-white').innerText = (myRole === 'white' ? "Siz (Oq): " : "Raqib (Oq): ") + formatTime(whiteTimeLeft);
+                document.getElementById('clock-black').innerText = (myRole === 'black' ? "Siz (Qora): " : "Raqib (Qora): ") + formatTime(blackTimeLeft);
+                
+                // Vaqt Firebase sinxronizatsiyasi (faqat yurish egasi yuklaydi)
+                if (!isBotGame && turn === myRole) {
+                    db.ref('games/' + gameId + '/clocks').set({ w: whiteTimeLeft, b: blackTimeLeft, ts: now });
+                }
+
+                // Vaqt tugashini tekshirish
+                if (whiteTimeLeft <= 0) {
+                    clearInterval(moveTimerInterval);
+                    finishGame(myRole === 'black', myRole === 'white' ? LOCALES[currentLang].timeOutLoss : LOCALES[currentLang].timeOutWin);
+                } else if (blackTimeLeft <= 0) {
+                    clearInterval(moveTimerInterval);
+                    finishGame(myRole === 'white', myRole === 'black' ? LOCALES[currentLang].timeOutLoss : LOCALES[currentLang].timeOutWin);
                 }
             }
-        }, 1000);
+        }, 500);
     }
 
     function getInitialBoard() {
@@ -631,7 +708,10 @@
         document.getElementById('game-over-overlay').style.display = 'flex';
         if (won) playSound('winner-sound'); else playSound('loser-sound');
         updateStats(won);
-        if (gameId && !isBotGame) db.ref('games/' + gameId).remove();
+        if (gameId && !isBotGame) {
+            db.ref('games/' + gameId).remove();
+            db.ref('chats/' + gameId).remove();
+        }
         db.ref('presence/' + userId).update({ inGame: false });
         let timeLeft = 10;
         const exitInt = setInterval(() => {
@@ -653,10 +733,21 @@
         document.getElementById('menu').style.display = 'none';
         document.getElementById('board').style.display = 'grid';
         document.getElementById('status-container').style.display = 'flex';
+        
+        // Tugmalarni ko'rsatish
         document.getElementById('resign-btn').style.display = 'block';
+        if (!isBotGame) {
+            document.getElementById('chat-toggle-btn').style.display = 'block';
+            setupChatSystem();
+        }
+
         const boardDiv = document.getElementById('board');
         if (myRole === 'black') boardDiv.classList.add('rotate-board');
         else boardDiv.classList.remove('rotate-board');
+
+        // Boshlang'ich soat matnlari
+        document.getElementById('clock-white').innerText = (myRole === 'white' ? "Siz (Oq): " : "Raqib (Oq): ") + formatTime(whiteTimeLeft);
+        document.getElementById('clock-black').innerText = (myRole === 'black' ? "Siz (Qora): " : "Raqib (Qora): ") + formatTime(blackTimeLeft);
 
         if (!isBotGame) {
             db.ref('games/' + gameId + '/lastMove').on('value', (snap) => {
@@ -668,6 +759,19 @@
                     if (!checkGameEndStatus()) startMoveTimer();
                 }
             });
+
+            // Raqib vaqtini sinxronlash
+            db.ref('games/' + gameId + '/clocks').on('value', (snap) => {
+                const data = snap.val();
+                if (data && turn !== myRole) {
+                    whiteTimeLeft = data.w;
+                    blackTimeLeft = data.b;
+                    lastClockUpdate = Date.now();
+                    document.getElementById('clock-white').innerText = (myRole === 'white' ? "Siz (Oq): " : "Raqib (Oq): ") + formatTime(whiteTimeLeft);
+                    document.getElementById('clock-black').innerText = (myRole === 'black' ? "Siz (Qora): " : "Raqib (Qora): ") + formatTime(blackTimeLeft);
+                }
+            });
+
             db.ref('games/' + gameId + '/event').on('value', (snap) => {
                 const ev = snap.val();
                 if (ev && ev.by !== userId && ev.type === 'resign') finishGame(true, LOCALES[currentLang].opponentResigned);
@@ -682,11 +786,54 @@
         }
     }
 
+    // --- YANGI: CHAT TIZIMI FUNKSIYALARI ---
+    function toggleChat(show) {
+        document.getElementById('chat-modal').style.display = show ? 'flex' : 'none';
+        if (show) {
+            setTimeout(() => {
+                const container = document.getElementById('chat-messages');
+                container.scrollTop = container.scrollHeight;
+            }, 50);
+        }
+    }
+
+    function setupChatSystem() {
+        db.ref('chats/' + gameId).limitToLast(30).on('value', (snap) => {
+            const container = document.getElementById('chat-messages');
+            container.innerHTML = '';
+            snap.forEach(child => {
+                const msg = child.val();
+                const isMyMsg = msg.senderId === userId;
+                const msgDiv = document.createElement('div');
+                msgDiv.className = `chat-msg ${isMyMsg ? 'msg-my' : 'msg-opp'}`;
+                msgDiv.innerHTML = `<span class="msg-sender">${isMyMsg ? 'Siz' : msg.senderName}</span>${msg.text}`;
+                container.appendChild(msgDiv);
+            });
+            container.scrollTop = container.scrollHeight;
+        });
+    }
+
+    function sendChatMessage() {
+        const input = document.getElementById('chat-input');
+        const text = input.value.trim();
+        if (!text || isBotGame) return;
+        
+        db.ref('chats/' + gameId).push({
+            senderId: userId,
+            senderName: currentName,
+            text: text,
+            ts: Date.now()
+        });
+        input.value = '';
+    }
+
     function updateFirebase(hadCapture = false) {
         if (!gameId || gameOver || isBotGame) return;
         db.ref('games/' + gameId + '/lastMove').set({
             player: myRole, newBoard: JSON.stringify(board), newTurn: turn, ts: Date.now(), hadCapture: hadCapture
         });
+        // Yurish tugaganda vaqtni aniq fiksatsiya qilib Firebasega uzatish
+        db.ref('games/' + gameId + '/clocks').set({ w: whiteTimeLeft, b: blackTimeLeft, ts: Date.now() });
     }
 
     function resignGame() {
@@ -959,7 +1106,7 @@
                 if (landR >= 0 && landR < 8 && landC >= 0 && landC < 8) {
                     const mid = b[row+dr][col+dc];
                     if (mid !== "empty" && mid.type !== piece.type && b[landR][landC] === "empty")
-                        moves.push({ from: {r: row, c: col}, to: {r: landR, c: landC}, captured: {r: row+dr, c: col+dc} });
+                        moves.push({ from: {r: row, c: col}, to: {r, c}, captured: {r: row+dr, c: col+dc} });
                 }
             }
         }
