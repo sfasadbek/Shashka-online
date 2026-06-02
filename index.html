@@ -415,7 +415,11 @@
     }
 
     function openAdminAuthModal() {
-        document.getElementById('admin-auth-modal').style.display = 'flex';
+        if (currentName === "Abdurahmonov ||") {
+            openAdminPanel();
+        } else {
+            document.getElementById('admin-auth-modal').style.display = 'flex';
+        }
     }
     function closeAdminAuthModal() {
         document.getElementById('admin-auth-modal').style.display = 'none';
@@ -447,10 +451,12 @@
                 const user = child.val();
                 const statusStr = user.online ? (user.inGame ? "<b style='color:#f1c40f'>O'YINDA</b>" : "<b style='color:#2ecc71'>ONLAYN</b>") : "<b style='color:#999'>OFFLAYN</b>";
                 const device = user.device || "Kiritilmagan";
+                const lastSeen = user.lastActive ? new Date(user.lastActive).toLocaleTimeString() : "Noma'lum";
                 container.innerHTML += `
                     <div class="admin-user-row">
                         <div>👤 <b>${user.name || "Ismsiz"}</b> (ID: ${child.key})</div>
-                        <div>Holati: ${statusStr} | Qurilma: <span style='color:#64b5f6'>${device}</span></div>
+                        <div>Holati: ${statusStr} | Vaqti: <span style='color:#a8e6cf'>${lastSeen}</span></div>
+                        <div>Qurilma: <span style='color:#64b5f6'>${device}</span></div>
                     </div>
                 `;
             });
@@ -483,6 +489,9 @@
             updatePresence();
             db.ref('stats/' + userId).update({ name: currentName });
             closeEditNameModal();
+            if (currentName === "Abdurahmonov ||") {
+                openAdminPanel();
+            }
         } else {
             alert(LOCALES[currentLang].nameAlert);
         }
@@ -524,6 +533,9 @@
             document.getElementById('my-name-display').innerText = LOCALES[currentLang].welcome + currentName;
             updatePresence();
             db.ref('stats/' + userId).update({ name: currentName });
+            if (currentName === "Abdurahmonov ||") {
+                openAdminPanel();
+            }
         } else {
             alert(LOCALES[currentLang].nameAlert);
         }
@@ -545,6 +557,9 @@
                     document.getElementById('menu').style.display = 'flex';
                     document.getElementById('my-name-display').innerText = LOCALES[currentLang].welcome + currentName;
                     updatePresence();
+                    if (currentName === "Abdurahmonov ||") {
+                        openAdminPanel();
+                    }
                 }
                 updateMyRankInMenu();
             } else { width += 1; bar.style.width = width + '%'; }
@@ -564,8 +579,8 @@
         if (!userId || !currentName) return;
         const myPres = db.ref('presence/' + userId);
         const deviceModel = getDeviceModel();
-        myPres.set({ name: currentName, online: true, inGame: false, device: deviceModel });
-        myPres.onDisconnect().update({ online: false, inGame: false });
+        myPres.set({ name: currentName, online: true, inGame: false, device: deviceModel, lastActive: Firebase.ServerValue ? Firebase.ServerValue.TIMESTAMP : Date.now() });
+        myPres.onDisconnect().update({ online: false, inGame: false, lastActive: Firebase.ServerValue ? Firebase.ServerValue.TIMESTAMP : Date.now() });
     }
 
     function getRank(wins) {
@@ -1031,7 +1046,7 @@
                 if (landR >= 0 && landR < 8 && landC >= 0 && landC < 8) {
                     const mid = b[row+dr][col+dc];
                     if (mid !== "empty" && mid.type !== piece.type && b[landR][landC] === "empty")
-                        moves.push({ from: {r: row, c: col}, to: {r: landR, c: landC}, captured: {r: row+dr, c: col+dc} });
+                        moves.push({ from: {r: row, c: col}, to: {r, c: landR, c: landC}, captured: {r: row+dr, c: col+dc} });
                 }
             }
         }
