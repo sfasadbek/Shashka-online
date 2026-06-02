@@ -730,6 +730,14 @@
         
         stopLobbyMusic(); 
         board = existingBoard ? JSON.parse(existingBoard) : getInitialBoard();
+        // O'yin boshlanganda turn ni har doim white ga sozlaymiz
+        turn = 'white';
+        gameOver = false;
+        mustJumpAgain = false;
+        selected = null;
+        whiteTimeLeft = 600;
+        blackTimeLeft = 600;
+
         document.getElementById('menu').style.display = 'none';
         document.getElementById('board').style.display = 'grid';
         document.getElementById('status-container').style.display = 'flex';
@@ -782,7 +790,7 @@
 
         // Agar bot oq rangda bo'lsa va o'yin boshlansa, birinchi bo'lib yursin
         if (isBotGame && turn === botRole) {
-            setTimeout(makeBotMove, 600);
+            setTimeout(makeBotMove, 800);
         }
     }
 
@@ -944,14 +952,14 @@
         if (cap && getCaptureMoves(tR, tC, board[tR][tC]).length > 0) { 
             selected = { r: tR, c: tC }; mustJumpAgain = true; 
             updateFirebase(true); render();
-            if (isBotGame && turn === botRole) setTimeout(makeBotMove, 300);
+            if (isBotGame && turn === botRole) setTimeout(makeBotMove, 400);
         }
         else { 
             selected = null; mustJumpAgain = false; turn = (turn === 'white') ? 'black' : 'white'; 
             updateFirebase(!!cap); render(); 
             if (!checkGameEndStatus()) {
                 startMoveTimer(); 
-                if (isBotGame && turn === botRole) setTimeout(makeBotMove, 400);
+                if (isBotGame && turn === botRole) setTimeout(makeBotMove, 500);
             }
         }
         return true;
@@ -960,7 +968,7 @@
     function makeBotMove() {
         if (gameOver || turn !== botRole) return;
         if (mustJumpAgain && selected) {
-            let caps = getCaptureMoves(selected.r, selected.c, board[selected.r][selected.c]);
+            let caps = getCaptureMovesForAI(selected.r, selected.c, board[selected.r][selected.c], board);
             if (caps.length > 0) {
                 const move = caps[Math.floor(Math.random() * caps.length)];
                 executeMove(move.from.r, move.from.c, move.to.r, move.to.c, move.captured);
@@ -1106,7 +1114,7 @@
                 if (landR >= 0 && landR < 8 && landC >= 0 && landC < 8) {
                     const mid = b[row+dr][col+dc];
                     if (mid !== "empty" && mid.type !== piece.type && b[landR][landC] === "empty")
-                        moves.push({ from: {r: row, c: col}, to: {r, c}, captured: {r: row+dr, c: col+dc} });
+                        moves.push({ from: {r: row, c: col}, to: {r: landR, c: landC}, captured: {r: row+dr, c: col+dc} });
                 }
             }
         }
@@ -1118,7 +1126,7 @@
         for (let [dr, dc] of dirs) {
             if (piece.king) {
                 let r = row + dr, c = col + dc;
-                while (r >= 0 && r < 8 && c >= 0 && c < 8) {
+                while (r >= 0 && r < 8 && c >= 8 ? false : c >= 0) {
                     if (b[r][c] === "empty") {
                         moves.push({ from: {r: row, c: col}, to: {r: r, c: c} });
                     } else break; 
