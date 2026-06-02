@@ -1031,7 +1031,7 @@
                 if (landR >= 0 && landR < 8 && landC >= 0 && landC < 8) {
                     const mid = b[row+dr][col+dc];
                     if (mid !== "empty" && mid.type !== piece.type && b[landR][landC] === "empty")
-                        moves.push({ from: {r: row, c: col}, to: {r, c}, captured: {r: row+dr, c: col+dc} });
+                        moves.push({ from: {r: row, c: col}, to: {r: landR, c: landC}, captured: {r: row+dr, c: col+dc} });
                 }
             }
         }
@@ -1043,8 +1043,8 @@
         for (let [dr, dc] of dirs) {
             if (piece.king) {
                 let r = row + dr, c = col + dc;
-                while (r >= 0 && r < 8 && c >= 8 && c < 8) {
-                    if (b[r][c] === "empty") moves.push({ from: {r: row, c: col}, to: {r} }); else break; r += dr; c += dc;
+                while (r >= 0 && r < 8 && c >= 0 && c < 8) {
+                    if (b[r][c] === "empty") moves.push({ from: {r: row, c: col}, to: {r: r, c: c} }); else break; r += dr; c += dc;
                 }
             } else {
                 const nR = row + dr, nC = col + dc;
